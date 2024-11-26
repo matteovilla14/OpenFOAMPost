@@ -1,0 +1,381 @@
+'''
+Load and post-process OpenFOAM simulations. \\
+.vtk files will be saved as .svg through PyVista. \\
+.dat files will be plotted as .svg through matplotlib.
+
+Maintainer: TheBusyDev <https://github.com/TheBusyDev/>
+'''
+import os
+import re
+import sys
+import pandas as pd
+import pyvista as pv
+import matplotlib.pyplot as plt
+from io import StringIO
+
+
+
+# ------------------ CONSTANTS ------------------
+CASE_TYPE = '2D' # other option: 3D
+
+
+
+# ------------------ PYVISTA OPTONS ------------------
+UNITS_OF_MEASURE = {
+    'p': 'Pa', # NOTE: it changes when dealing with incompressible cases
+    'U': 'm/s',
+    'T': 'K',
+    'Ma': '-'
+}
+
+COLORMAPS = {
+    'p': 'coolwarm',
+    'U': 'turbo',
+    'T': 'viridis',
+    'Ma': 'turbo'
+}
+
+match CASE_TYPE:
+    case '2D': COMPONENTS = ['x', 'y']
+    case '3D': COMPONENTS = ['x', 'y', 'z']
+
+SCALAR_BAR_ARGS = {
+    'vertical': False,
+    'width': 0.7,
+    'height': 0.05,
+    'position_x': 0.15,
+    'position_y': 0.05,
+    'n_labels': 6,
+    'title_font_size': 20,
+    'label_font_size': 18,
+    'font_family': 'times'
+}
+
+PLOTTER_OPTIONS = {
+    'window_size': [1000, 500],
+    'background_color': 'white',
+    'camera_position': 'yx'
+}
+
+CAMERA_ZOOM = 2
+
+
+
+# ------------------ MATPLOTLIB OPTIONS ------------------
+FIGURE_ARGS = {
+    'figsize': [8, 6],
+    'dpi': 125
+}
+
+
+
+# ------------------ FUNCTIONS ------------------
+def find_files(pattern: str, exceptions: str=[]) -> list[str]:
+    '''
+    Look for files based on specified pattern recursively. \\
+    'pattern' is treated as a regular expression. \\
+    Return files location as list. \\
+    Return an empty list if no file is found.
+    '''
+    print(f'\nLooking for {pattern} files...')
+    filepaths = []
+    pattern = re.compile(pattern)
+
+    for root, _, files in os.walk('.', topdown=True):
+        for file in files:
+            # skip exceptions
+            if file in exceptions:
+                continue
+
+            # skip other files
+            if not pattern.fullmatch(file):
+                continue
+            
+            # append filepath
+            filepath = os.path.join(root, file)
+            filepaths.append(filepath)
+    
+    return filepaths
+
+
+def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, str]:
+    '''
+    Return output filepath (with .svg extension), timestep and output directory name. \\
+    If 'filesuffix' is provided, then files will be generated with the specificed suffix.
+    '''
+    # get timestep and output path based on OpenFOAM convention
+    # (under postProcessing folder)
+    filename = os.path.basename(filepath)
+    filename = filename.split('.')[0:-1] # remove file extension
+    filename = ''.join(filename)
+
+    path = os.path.dirname(filepath)
+    timestep = os.path.basename(path)
+
+    # create output file path
+    outpath = os.path.dirname(path) # output path
+    outdirname = os.path.basename(outpath) # output directory name
+    outfilename = filename # output filename
+
+    if filesuffix != '':
+        outfilename += '_' + filesuffix # add filesuffix to output filename
+    
+    outfilename += '_' + timestep + '.svg' # add timestep to output filename
+    outfilepath = os.path.join(outpath, outfilename) # output file path
+    print(f'Output file: {outfilepath}')
+
+    return outfilepath, timestep, outdirname
+
+
+def vtk2svg(filepath: str) -> None:
+    '''
+    Load .vtk file and convert it to svg.
+    '''
+    print(f'\nProcessing {filepath}...')
+    
+    # load VTK file and get array names contained inside it
+    mesh = pv.read(filepath)
+
+    if len(mesh.cell_data) > 0:
+        print('Loading cell data...')
+        data = mesh.cell_data # load cell data as preferred option
+    elif len(mesh.point_data) > 0:
+        print('Loading point data...')
+        data = mesh.point_data # load point data as alternative
+    else:
+        print('ERROR: empty file.')
+        return
+    
+    array_names = data.keys().copy()
+    colormaps = COLORMAPS.copy()
+
+    # loop around all the arrays found in mesh
+    for array_name in array_names:
+        array = data[array_name]
+
+        # remove empty arrays
+        if len(array) == 0:
+            data.pop(array_name)
+            continue
+
+        # detect units of measurement
+        try:
+            units = ' [' + UNITS_OF_MEASURE[array_name] + ']'
+        except ValueError:
+            units = ''
+        
+        if array.shape[-1] == 3:
+            # split arrays in their components 
+            for index, comp in enumerate(COMPONENTS):
+                new_name = array_name + '_' + comp + units
+                data[new_name] = array[:, index]
+                colormaps[new_name] = colormaps[array_name] # add entry to colormap
+
+            # rename array to indicate its magnitude
+            new_name = array_name + '_mag' + units
+        else:
+            # add units of measurements to the array
+            new_name = array_name + units
+        
+        # rename array
+        data[new_name] = data.pop(array_name)
+        colormaps[new_name] = colormaps.pop(array_name) # add entry to colormap
+
+    # loop around the modified arrays
+    for array_name in data.keys():
+        # plot array and set plot properties
+        plotter = pv.Plotter(off_screen=True)
+        plotter.add_mesh(mesh,
+                         scalars=array_name,
+                         cmap=colormaps[array_name],
+                         scalar_bar_args=SCALAR_BAR_ARGS)
+        
+        # adjust plotter options
+        for key, value in PLOTTER_OPTIONS.items():
+            setattr(plotter, key, value)
+
+        plotter.zoom_camera(CAMERA_ZOOM)
+
+        # remove units from array name
+        array_name = re.sub(r'\[.*?\]', '', array_name)
+        array_name = re.sub(r'\s+', '', array_name)
+
+        # create output directory and save array as svg
+        outfilepath, *_ = get_output_filepath(filepath, filesuffix=array_name)
+        plotter.save_graphic(outfilepath)
+        plotter.close()
+
+
+def read_labels(filepath: str) -> list[str]:
+    '''
+    Get labels from file (i.e. the last comment line).
+    '''
+    with open(filepath, 'r') as file:
+        for line in file:
+            # skip comment lines
+            if line == '' or line[0] != '#':
+                break
+
+            labels = line
+    
+    # analyze last line and get labels
+    try:
+        return labels[1:].split()
+    except:
+        return []
+
+
+def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False) -> None:
+    '''
+    Plot data from .dat files and save figure. \\
+    Receive pandas DataFrame and source filepath as input.
+    '''
+    # create new plot
+    x = df.iloc[:,0]
+    fig, ax = plt.subplots(**FIGURE_ARGS)
+
+    for label, y in df.iloc[:, 1:].items():
+        # plot data from DataFrame
+        if not semilogy:
+            ax.plot(x, y, label=label)
+        else:
+            ax.semilogy(x, y, label=label)
+
+    outfilepath, timestep, outdirname = get_output_filepath(filepath)
+
+    # set plot properties
+    title = outdirname
+
+    if timestep != '0':
+        title += '@' + timestep
+    
+    ax.set_title(title)
+    ax.set_xlabel(x.name)
+    ax.grid()
+    ax.legend()
+
+    # save figure
+    fig.savefig(outfilepath)    
+    plt.close(fig) # close figure once it's saved
+
+
+def read_dat(filepath: str, semilogy: bool=False) -> None:
+    '''
+    Read data from .dat files \\
+    (for 'forces.dat' files, refer to 'read_forces' function).
+    '''
+    print(f'\nProcessing {filepath}...')
+
+    # initialize labels
+    labels = read_labels(filepath)
+
+    # retrive data from .dat file
+    try:
+        data = pd.read_csv(filepath, 
+                           comment='#',
+                           delimiter=r'\t+|\s+',
+                           engine='python',
+                           names=labels) # set labels
+    except:
+        print(f'ERROR: unable to load {filepath}.')
+        return
+    
+    # do not plot z-component in 2D case
+    if CASE_TYPE == '2D':        
+        for label in labels:
+            if label.endswith('_z'):
+                # drop z-component
+                data.drop(label, axis=1, inplace=True)
+    
+    # plot data and save svg
+    plot_data(data, filepath=filepath, semilogy=semilogy)
+
+
+def read_forces(filepath: str) -> None:
+    '''
+    Read data from 'forces.dat' files and save plot.
+    '''
+    print(f'\nProcessing {filepath}...')
+
+    with open(filepath, 'r') as file:
+        content = file.read()
+    
+    # get contributions of each force 
+    # (up to 3 contributions: pressure, viscosity, porosity)
+    contribs = re.search(r'forces\((.*?)\)', content)
+
+    try:
+        n_contribs = len(contribs.group(1).split()) # number of contributions
+    except:
+        n_contribs = 0
+
+    # remove all the bracket
+    content = content.replace('(', ' ')
+    content = content.replace(')', ' ')
+
+    dummy_file = StringIO(content)
+
+    try:
+        data = pd.read_csv(dummy_file,
+                           comment='#', 
+                           delimiter=r'\t+|\s+',
+                           engine='python')
+    except:
+        print(f'ERROR: unable to load {filepath}.')
+        return
+
+    # save iterations to 'forces' DataFrame
+    forces = pd.DataFrame()
+    forces['Time'] = data.iloc[:,0]
+
+    def sum_contribs(forces, start_index, labels, n_contribs):
+        # sum contributions from pressure, viscosity and porosity
+        indices = range(start_index, start_index+3)
+
+        for index, label in zip(indices, labels):
+            sum_axes = [index + 3*n for n in range(n_contribs)] # get axes to be summed
+            forces[label] = data.iloc[:, sum_axes].sum(axis=1)
+
+    # get forces
+    f_labels = ['Fx [N]', 'Fy [N]']
+
+    if CASE_TYPE == '3D':
+        f_labels.append('Fz [N]')
+    
+    start_index = 1
+    sum_contribs(forces, start_index, f_labels, n_contribs)
+
+    # get moments
+    if CASE_TYPE == '3D':
+        m_labels = ['Mx [N*m]', 'My [N*m]', 'Mz [N*m]']
+        start_index = 1 + 3*n_contribs
+        sum_contribs(forces, start_index, m_labels, n_contribs)
+
+    # plot forces and save svg
+    plot_data(forces, filepath=filepath)
+
+    return forces
+
+
+
+# ------------------ MAIN PROGRAM ------------------
+def main() -> None:
+    # analyze .vtk files
+    for vtk_file in find_files(r'.*\.vtk'):
+        vtk2svg(vtk_file)
+
+    # analyze .dat and .xy files
+    for res_file in find_files(r'residuals\.dat'):
+        read_dat(res_file, semilogy=True)
+    
+    for xy_file in find_files(r'.*\.xy'):
+        read_dat(xy_file)
+
+    for force_file in find_files(r'forces\.dat'):
+        read_forces(force_file)
+
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
