@@ -25,15 +25,21 @@ UNITS_OF_MEASURE = {
     'p': 'Pa', # NOTE: it changes when dealing with incompressible cases
     'U': 'm/s',
     'T': 'K',
-    'Ma': '-'
+    'Ma': '-',
+    'x': 'm',
+    'y': 'm',
+    'z': 'm',
+    'Time': 's'
 }
 
 COLORMAPS = {
     'p': 'coolwarm',
     'U': 'turbo',
-    'T': 'viridis',
+    'T': 'inferno',
     'Ma': 'turbo'
 }
+
+DEFAULT_COLORMAP = 'coolwarm'
 
 match CASE_TYPE:
     case '2D': COMPONENTS = ['x', 'y']
@@ -77,9 +83,9 @@ def find_files(pattern: str, exceptions: str=[]) -> list[str]:
     Return files location as list. \\
     Return an empty list if no file is found.
     '''
-    print(f'\nLooking for {pattern} files...')
-    filepaths = []
     pattern = re.compile(pattern)
+    print(f'\nLooking for {pattern.pattern} files...')
+    filepaths = []
 
     for root, _, files in os.walk('.', topdown=True):
         for file in files:
@@ -94,13 +100,16 @@ def find_files(pattern: str, exceptions: str=[]) -> list[str]:
             # append filepath
             filepath = os.path.join(root, file)
             filepaths.append(filepath)
+
+    if filepaths == []:
+        print(f'No {pattern.pattern} file found.')
     
     return filepaths
 
 
-def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, str]:
+def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, str, str]:
     '''
-    Return output filepath (with .svg extension), timestep and output directory name. \\
+    Return output filepath (with .svg extension), input filename, timestep and output directory name. \\
     If 'filesuffix' is provided, then files will be generated with the specificed suffix.
     '''
     # get timestep and output path based on OpenFOAM convention
@@ -119,12 +128,34 @@ def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, st
 
     if filesuffix != '':
         outfilename += '_' + filesuffix # add filesuffix to output filename
+
+    if timestep != '0':
+        outfilename += '_' + timestep # add timestep to output filename
     
-    outfilename += '_' + timestep + '.svg' # add timestep to output filename
+    outfilename += '.svg' # add extension to output filename
     outfilepath = os.path.join(outpath, outfilename) # output file path
     print(f'Output file: {outfilepath}')
 
-    return outfilepath, timestep, outdirname
+    return outfilepath, filename, timestep, outdirname
+
+
+def get_units(array_name: str) -> str:
+    '''
+    Get units of measurement based on input array. \\
+    Return empty string if array is not found.
+    '''
+    # remove extension from components
+    if array_name not in COMPONENTS:
+        for comp in COMPONENTS:
+            array_name = array_name.replace(comp, '')
+    
+    # detect units of measurements
+    try:
+        units = ' [' + UNITS_OF_MEASURE[array_name] + ']'
+    except KeyError:
+        units = ''
+
+    return units
 
 
 def vtk2svg(filepath: str) -> None:
@@ -159,27 +190,30 @@ def vtk2svg(filepath: str) -> None:
             continue
 
         # detect units of measurement
-        try:
-            units = ' [' + UNITS_OF_MEASURE[array_name] + ']'
-        except ValueError:
-            units = ''
+        units = get_units(array_name)
         
+        # detect 3D arrays
         if array.shape[-1] == 3:
             # split arrays in their components 
             for index, comp in enumerate(COMPONENTS):
-                new_name = array_name + '_' + comp + units
+                new_name = array_name + comp + units
                 data[new_name] = array[:, index]
                 colormaps[new_name] = colormaps[array_name] # add entry to colormap
 
             # rename array to indicate its magnitude
-            new_name = array_name + '_mag' + units
+            new_name = array_name + 'mag' + units
         else:
             # add units of measurements to the array
             new_name = array_name + units
         
         # rename array
         data[new_name] = data.pop(array_name)
-        colormaps[new_name] = colormaps.pop(array_name) # add entry to colormap
+
+        # add entry to colormap
+        try:
+            colormaps[new_name] = colormaps.pop(array_name)
+        except KeyError:
+            colormaps[new_name] = DEFAULT_COLORMAP
 
     # loop around the modified arrays
     for array_name in data.keys():
@@ -225,7 +259,7 @@ def read_labels(filepath: str) -> list[str]:
         return []
 
 
-def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False) -> None:
+def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False, append_units: bool=True) -> None:
     '''
     Plot data from .dat files and save figure. \\
     Receive pandas DataFrame and source filepath as input.
@@ -235,22 +269,33 @@ def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False) -> None:
     fig, ax = plt.subplots(**FIGURE_ARGS)
 
     for label, y in df.iloc[:, 1:].items():
+        # append units of measurement
+        if append_units:
+            label += get_units(label)
+
         # plot data from DataFrame
         if not semilogy:
             ax.plot(x, y, label=label)
         else:
             ax.semilogy(x, y, label=label)
 
-    outfilepath, timestep, outdirname = get_output_filepath(filepath)
+    outfilepath, filename, timestep, outdirname = get_output_filepath(filepath)
 
-    # set plot properties
+    # set plot title
     title = outdirname
 
     if timestep != '0':
-        title += '@' + timestep
+        title += '@' + timestep + UNITS_OF_MEASURE['Time'] # add timestep to plot title
+        title += ' (' + filename + ')' # add filename info to plot title
+
+    xlabel = x.name
+
+    # set plot xlabel
+    xlabel = x.name + get_units(x.name)
     
+    # set plot properties
     ax.set_title(title)
-    ax.set_xlabel(x.name)
+    ax.set_xlabel(xlabel)
     ax.grid()
     ax.legend()
 
@@ -259,7 +304,7 @@ def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False) -> None:
     plt.close(fig) # close figure once it's saved
 
 
-def read_dat(filepath: str, semilogy: bool=False) -> None:
+def read_dat(filepath: str, semilogy: bool=False, append_units: bool=True) -> None:
     '''
     Read data from .dat files \\
     (for 'forces.dat' files, refer to 'read_forces' function).
@@ -288,7 +333,7 @@ def read_dat(filepath: str, semilogy: bool=False) -> None:
                 data.drop(label, axis=1, inplace=True)
     
     # plot data and save svg
-    plot_data(data, filepath=filepath, semilogy=semilogy)
+    plot_data(data, filepath, semilogy, append_units)
 
 
 def read_forces(filepath: str) -> None:
@@ -366,7 +411,7 @@ def main() -> None:
 
     # analyze .dat and .xy files
     for res_file in find_files(r'residuals\.dat'):
-        read_dat(res_file, semilogy=True)
+        read_dat(res_file, semilogy=True, append_units=False)
     
     for xy_file in find_files(r'.*\.xy'):
         read_dat(xy_file)
