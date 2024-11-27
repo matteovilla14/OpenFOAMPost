@@ -300,6 +300,7 @@ def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False, append_unit
     x = df.iloc[:,0]
     fig, ax = plt.subplots(**FIGURE_ARGS)
 
+    # loop around DataFrame
     for label, y in df.iloc[:, 1:].items():
         # append units of measurement
         if append_units:
@@ -319,8 +320,6 @@ def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False, append_unit
     if timestep != '0':
         title += '@' + timestep + UNITS_OF_MEASURE['Time'] # add timestep to plot title
         title += ' (' + filename + ')' # add filename info to plot title
-
-    xlabel = x.name
 
     # set plot xlabel
     xlabel = x.name + get_units(x.name)
@@ -387,7 +386,6 @@ def read_forces(filepath: str) -> None:
     # remove all the bracket
     content = content.replace('(', ' ')
     content = content.replace(')', ' ')
-
     dummy_file = StringIO(content)
 
     try:
