@@ -44,6 +44,12 @@ UNITS_OF_MEASURE = {
     'Time': 's' # time
 }
 
+VTK_FILE = r'.*\.vtk' # .vtk file
+CLOUD_FILE = r'cloud_.*\.vtk'
+RES_FILE = r'residuals\.dat' # residuals file
+XY_FILE = r'.*\.xy' # .cy file
+FORCE_FILE = r'forces\.dat' # forces.dat file
+
 
 
 # ------------------ PYVISTA OPTONS ------------------
@@ -87,25 +93,27 @@ FIGURE_ARGS = {
 
 
 # ------------------ FUNCTIONS ------------------
-def find_files(pattern: str, exceptions: str=[]) -> list[str]:
+def find_files(pattern: str, exceptions: list[str]=[]) -> list[str]:
     '''
     Look for files based on specified pattern recursively. \\
     'pattern' is treated as a regular expression. \\
+    'exceptions' is a list of regular expressions. \\
     Return files location as list. \\
     Return an empty list if no file is found.
     '''
     pattern = re.compile(pattern)
+    exceptions = [re.compile(exc) for exc in exceptions]
     print(f'\nLooking for {pattern.pattern} files...')
     filepaths = []
 
     for root, _, files in os.walk('.', topdown=True):
         for file in files:
-            # skip exceptions
-            if file in exceptions:
-                continue
-
             # skip other files
             if not pattern.fullmatch(file):
+                continue
+
+            # skip exceptions
+            if any([exc.fullmatch(file) for exc in exceptions]):
                 continue
             
             # append filepath
@@ -255,6 +263,13 @@ def vtk2svg(filepath: str) -> None:
         outfilepath, *_ = get_output_filepath(filepath, filesuffix=array_name)
         plotter.save_graphic(outfilepath)
         plotter.close()
+
+
+def cloud2svg(filepath: str) -> None:
+    '''
+    Load cloud*.vtk file and convert it to svg.
+    '''
+    pass # TODO: implement lagrangian particle tracking
 
 
 def read_labels(filepath: str) -> list[str]:
@@ -419,20 +434,25 @@ def read_forces(filepath: str) -> None:
 # ------------------ MAIN PROGRAM ------------------
 def main() -> None:
     # analyze .vtk files
-    for vtk_file in find_files(r'.*\.vtk'):
+    for vtk_file in find_files(VTK_FILE, exceptions=[CLOUD_FILE]):
         print(f'\nProcessing {vtk_file}...')
         vtk2svg(vtk_file)
 
+    # analyze cloud files for lagrangian particle tracking
+    for cloud_file in find_files(CLOUD_FILE):
+        print(f'\nProcessing {cloud_file}...')
+        cloud2svg(cloud_file)
+    
     # analyze .dat and .xy files
-    for res_file in find_files(r'residuals\.dat'):
+    for res_file in find_files(RES_FILE):
         print(f'\nProcessing {res_file}...')
         read_dat(res_file, semilogy=True, append_units=False)
     
-    for xy_file in find_files(r'.*\.xy'):
+    for xy_file in find_files(XY_FILE):
         print(f'\nProcessing {xy_file}...')
         read_dat(xy_file)
 
-    for force_file in find_files(r'forces\.dat'):
+    for force_file in find_files(FORCE_FILE):
         print(f'\nProcessing {force_file}...')
         read_forces(force_file)
 
