@@ -18,19 +18,36 @@ from io import StringIO
 # ------------------ CONSTANTS ------------------
 CASE_TYPE = '2D' # other option: 3D
 
+ALL_COMPONENTS = ['_x', '_y', '_z'] # all possible arrays components
+
+match CASE_TYPE:
+    case '2D': IN_COMPONENTS = ['_x', '_y']       # in-plane components (for 2D case)
+    case '3D': IN_COMPONENTS = ['_x', '_y', '_z'] # components 
+
+# out-of-plane components (for 2D case)
+OUT_COMPONENTS = [comp for comp in ALL_COMPONENTS
+                  if comp not in IN_COMPONENTS]
+
+FORCE_LABEL = 'F'
+MOMENT_LABEL = 'M'
+
+UNITS_OF_MEASURE = {
+    'p': 'Pa',  # pressure - NOTE: it changes when dealing with incompressible cases
+    'U': 'm/s', # velocity
+    'T': 'K',   # temperature
+    'Ma': '-',  # Mach number
+    'F': 'N',   # force
+    'M': 'N*m', # moment
+    'x': 'm',   # x direction
+    'y': 'm',   # y direction
+    'z': 'm',   # z direction
+    'Time': 's' # time
+}
+
 
 
 # ------------------ PYVISTA OPTONS ------------------
-UNITS_OF_MEASURE = {
-    'p': 'Pa', # NOTE: it changes when dealing with incompressible cases
-    'U': 'm/s',
-    'T': 'K',
-    'Ma': '-',
-    'x': 'm',
-    'y': 'm',
-    'z': 'm',
-    'Time': 's'
-}
+DEFAULT_COLORMAP = 'coolwarm'
 
 COLORMAPS = {
     'p': 'coolwarm',
@@ -38,12 +55,6 @@ COLORMAPS = {
     'T': 'inferno',
     'Ma': 'turbo'
 }
-
-DEFAULT_COLORMAP = 'coolwarm'
-
-match CASE_TYPE:
-    case '2D': COMPONENTS = ['x', 'y']
-    case '3D': COMPONENTS = ['x', 'y', 'z']
 
 SCALAR_BAR_ARGS = {
     'vertical': False,
@@ -143,13 +154,21 @@ def get_units(array_name: str) -> str:
     '''
     Get units of measurement based on input array. \\
     Return empty string if array is not found.
-    '''
+    '''    
+    # detect units of measurement
+    try:
+        units = ' [' + UNITS_OF_MEASURE[array_name] + ']'
+        return units
+    except KeyError:
+        pass
+
     # remove extension from components
-    if array_name not in COMPONENTS:
-        for comp in COMPONENTS:
-            array_name = array_name.replace(comp, '')
+    for comp in ALL_COMPONENTS:
+        if array_name.endswith(comp):
+            array_name = array_name.removesuffix(comp)
+            break
     
-    # detect units of measurements
+    # try again to detect units of measurement
     try:
         units = ' [' + UNITS_OF_MEASURE[array_name] + ']'
     except KeyError:
@@ -162,8 +181,6 @@ def vtk2svg(filepath: str) -> None:
     '''
     Load .vtk file and convert it to svg.
     '''
-    print(f'\nProcessing {filepath}...')
-    
     # load VTK file and get array names contained inside it
     mesh = pv.read(filepath)
 
@@ -195,7 +212,7 @@ def vtk2svg(filepath: str) -> None:
         # detect 3D arrays
         if array.shape[-1] == 3:
             # split arrays in their components 
-            for index, comp in enumerate(COMPONENTS):
+            for index, comp in enumerate(IN_COMPONENTS):
                 new_name = array_name + comp + units
                 data[new_name] = array[:, index]
                 colormaps[new_name] = colormaps[array_name] # add entry to colormap
@@ -309,8 +326,6 @@ def read_dat(filepath: str, semilogy: bool=False, append_units: bool=True) -> No
     Read data from .dat files \\
     (for 'forces.dat' files, refer to 'read_forces' function).
     '''
-    print(f'\nProcessing {filepath}...')
-
     # initialize labels
     labels = read_labels(filepath)
 
@@ -325,12 +340,13 @@ def read_dat(filepath: str, semilogy: bool=False, append_units: bool=True) -> No
         print(f'ERROR: unable to load {filepath}.')
         return
     
-    # do not plot z-component in 2D case
+    # do not plot out-of-plane component in 2D case
     if CASE_TYPE == '2D':        
         for label in labels:
-            if label.endswith('_z'):
-                # drop z-component
-                data.drop(label, axis=1, inplace=True)
+            for comp in OUT_COMPONENTS:
+                if label.endswith(comp):
+                    data.drop(label, axis=1, inplace=True) # drop out-of-plane component
+                    break                
     
     # plot data and save svg
     plot_data(data, filepath, semilogy, append_units)
@@ -340,8 +356,7 @@ def read_forces(filepath: str) -> None:
     '''
     Read data from 'forces.dat' files and save plot.
     '''
-    print(f'\nProcessing {filepath}...')
-
+    # open force file
     with open(filepath, 'r') as file:
         content = file.read()
     
@@ -382,22 +397,20 @@ def read_forces(filepath: str) -> None:
             forces[label] = data.iloc[:, sum_axes].sum(axis=1)
 
     # get forces
-    f_labels = ['Fx [N]', 'Fy [N]']
-
-    if CASE_TYPE == '3D':
-        f_labels.append('Fz [N]')
-    
+    f_labels = [FORCE_LABEL + comp for comp in IN_COMPONENTS]
     start_index = 1
     sum_contribs(forces, start_index, f_labels, n_contribs)
 
     # get moments
-    if CASE_TYPE == '3D':
-        m_labels = ['Mx [N*m]', 'My [N*m]', 'Mz [N*m]']
-        start_index = 1 + 3*n_contribs
-        sum_contribs(forces, start_index, m_labels, n_contribs)
+    match CASE_TYPE:
+        case '2D': m_labels = [MOMENT_LABEL + comp for comp in OUT_COMPONENTS]
+        case '3D': m_labels = [MOMENT_LABEL + comp for comp in IN_COMPONENTS]
+
+    start_index = 1 + 3*n_contribs
+    sum_contribs(forces, start_index, m_labels, n_contribs)
 
     # plot forces and save svg
-    plot_data(forces, filepath=filepath)
+    plot_data(forces, filepath)
 
     return forces
 
@@ -407,16 +420,20 @@ def read_forces(filepath: str) -> None:
 def main() -> None:
     # analyze .vtk files
     for vtk_file in find_files(r'.*\.vtk'):
+        print(f'\nProcessing {vtk_file}...')
         vtk2svg(vtk_file)
 
     # analyze .dat and .xy files
     for res_file in find_files(r'residuals\.dat'):
+        print(f'\nProcessing {res_file}...')
         read_dat(res_file, semilogy=True, append_units=False)
     
     for xy_file in find_files(r'.*\.xy'):
+        print(f'\nProcessing {xy_file}...')
         read_dat(xy_file)
 
     for force_file in find_files(r'forces\.dat'):
+        print(f'\nProcessing {force_file}...')
         read_forces(force_file)
 
     sys.exit(0)
