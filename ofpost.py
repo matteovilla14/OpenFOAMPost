@@ -12,6 +12,7 @@ import pandas as pd
 import pyvista as pv
 import matplotlib.pyplot as plt
 from io import StringIO
+from typing import Generator
 
 
 
@@ -93,18 +94,18 @@ FIGURE_ARGS = {
 
 
 # ------------------ FUNCTIONS ------------------
-def find_files(pattern: str, exceptions: list[str]=[]) -> list[str]:
+def find_files(pattern: str, exceptions: list[str]=[]) -> Generator[str, None, None]:
     '''
     Look for files based on specified pattern recursively. \\
     'pattern' is treated as a regular expression. \\
     'exceptions' is a list of regular expressions. \\
-    Return files location as list. \\
-    Return an empty list if no file is found.
+    Return files location as generator. \\
+    Print error message if no file is found.
     '''
     pattern = re.compile(pattern)
     exceptions = [re.compile(exc) for exc in exceptions]
+    is_found = False
     print(f'\nLooking for {pattern.pattern} files...')
-    filepaths = []
 
     for root, _, files in os.walk('.', topdown=True):
         for file in files:
@@ -116,14 +117,13 @@ def find_files(pattern: str, exceptions: list[str]=[]) -> list[str]:
             if any([exc.fullmatch(file) for exc in exceptions]):
                 continue
             
-            # append filepath
+            # yield filepath
             filepath = os.path.join(root, file)
-            filepaths.append(filepath)
+            is_found = True
+            yield filepath
 
-    if filepaths == []:
+    if not is_found:
         print(f'No {pattern.pattern} file found.')
-    
-    return filepaths
 
 
 def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, str, str]:
