@@ -140,6 +140,11 @@ def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, st
     path = os.path.dirname(filepath)
     timestep = os.path.basename(path)
 
+    try:
+        float(timestep) # verify that timestep is really a float
+    except ValueError:
+        timestep = '0'
+
     # create output file path
     outpath = os.path.dirname(path) # output path
     outdirname = os.path.basename(outpath) # output directory name
@@ -286,9 +291,11 @@ def read_labels(filepath: str) -> list[str]:
     
     # analyze last line and get labels
     try:
-        return labels[1:].split()
+        labels = labels.strip().removeprefix('#').split() 
     except:
-        return []
+        labels = []
+
+    return labels
 
 
 def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False, append_units: bool=True) -> None:
