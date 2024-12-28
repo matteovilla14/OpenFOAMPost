@@ -8,6 +8,7 @@ Maintainer: TheBusyDev <https://github.com/TheBusyDev/>
 import os
 import re
 import sys
+import numpy as np
 import pandas as pd
 import pyvista as pv
 import matplotlib.pyplot as plt
@@ -78,10 +79,9 @@ SCALAR_BAR_ARGS = {
 PLOTTER_OPTIONS = {
     'window_size': [1000, 500],
     'background_color': 'white',
-    'camera_position': 'yx'
 }
 
-CAMERA_ZOOM = 2
+CAMERA_SCALING = 1.0
 
 
 
@@ -190,9 +190,48 @@ def get_units(array_name: str) -> str:
     return units
 
 
+def adjust_camera(plotter: pv.Plotter) -> None:
+    '''
+    Try to infer slice normal direction and adjust plotter camera position. \\
+    If normal direction is not computed correctly \\
+    or slice is not aligned with x, y or z direction, then reset camera.
+    '''
+    mesh = plotter.mesh
+
+    # try to infer slice normal direction (slice has zero thickness in normal direction)
+    bounds = np.array(mesh.bounds)
+    delta_bounds = np.abs(bounds[1::2] -  bounds[0:-1:2])
+    normal_idx, = np.where(delta_bounds < 1e-16) # get zero-thickness direction
+    
+    # return None if normal is not found correctly
+    if len(normal_idx) != 1:
+        plotter.reset_camera()
+        return
+    
+    # generate normal vector
+    normal = np.zeros(3)
+    normal[normal_idx] = 1
+
+    # set up the camera position and focal point
+    camera_position = mesh.center + normal * CAMERA_SCALING
+    focal_point = mesh.center
+
+    # compute camera view-up orientation
+    delta_bounds = np.delete(delta_bounds, normal_idx)
+    view_up_idx = np.argmin(delta_bounds)
+    view_up = np.zeros(3)
+    view_up[view_up_idx] = 1
+
+    plotter.camera_position = [
+        camera_position,
+        focal_point,
+        view_up
+    ]
+
+
 def vtk2svg(filepath: str) -> None:
     '''
-    Load .vtk file and convert it to svg.
+    Load .vtk file and convert it to .svg.
     '''
     # load VTK file and get array names contained inside it
     mesh = pv.read(filepath)
@@ -244,21 +283,24 @@ def vtk2svg(filepath: str) -> None:
             colormaps[new_name] = colormaps.pop(array_name)
         except KeyError:
             colormaps[new_name] = DEFAULT_COLORMAP
+    
+    # create a new plotter for pyvista, load mesh and adjust camera
+    plotter = pv.Plotter(off_screen=True)
+    plotter.add_mesh(mesh)
+    adjust_camera(plotter)
+    plotter.clear()
+
+    # adjust plotter options
+    for key, value in PLOTTER_OPTIONS.items():
+        setattr(plotter, key, value)
 
     # loop around the modified arrays
     for array_name in data.keys():
         # plot array and set plot properties
-        plotter = pv.Plotter(off_screen=True)
         plotter.add_mesh(mesh,
                          scalars=array_name,
                          cmap=colormaps[array_name],
                          scalar_bar_args=SCALAR_BAR_ARGS)
-        
-        # adjust plotter options
-        for key, value in PLOTTER_OPTIONS.items():
-            setattr(plotter, key, value)
-
-        plotter.zoom_camera(CAMERA_ZOOM)
 
         # remove units from array name
         array_name = re.sub(r'\[.*?\]', '', array_name)
@@ -267,12 +309,16 @@ def vtk2svg(filepath: str) -> None:
         # create output directory and save array as svg
         outfilepath, *_ = get_output_filepath(filepath, filesuffix=array_name)
         plotter.save_graphic(outfilepath)
-        plotter.close()
+        
+        # clear plotter before starting a new loop
+        plotter.clear()
+    
+    plotter.close() # close plotter
 
 
 def cloud2svg(filepath: str) -> None:
     '''
-    Load cloud*.vtk file and convert it to svg.
+    Load cloud*.vtk file and convert it to .svg.
     '''
     pass # TODO: implement lagrangian particle tracking
 
