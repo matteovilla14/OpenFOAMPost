@@ -286,9 +286,10 @@ def vtk2svg(filepath: str) -> None:
     
     # create a new plotter for pyvista, load mesh and adjust camera
     plotter = pv.Plotter(off_screen=True)
-    plotter.add_mesh(mesh)
+    actor = plotter.add_mesh(mesh)
     adjust_camera(plotter)
-    plotter.clear()
+    plotter.show_axes()
+    plotter.remove_actor(actor)
 
     # adjust plotter options
     for key, value in PLOTTER_OPTIONS.items():
@@ -297,10 +298,10 @@ def vtk2svg(filepath: str) -> None:
     # loop around the modified arrays
     for array_name in data.keys():
         # plot array and set plot properties
-        plotter.add_mesh(mesh,
-                         scalars=array_name,
-                         cmap=colormaps[array_name],
-                         scalar_bar_args=SCALAR_BAR_ARGS)
+        actor = plotter.add_mesh(mesh,
+                                 scalars=array_name,
+                                 cmap=colormaps[array_name],
+                                 scalar_bar_args=SCALAR_BAR_ARGS)
 
         # remove units from array name
         array_name = re.sub(r'\[.*?\]', '', array_name)
@@ -311,7 +312,7 @@ def vtk2svg(filepath: str) -> None:
         plotter.save_graphic(outfilepath)
         
         # clear plotter before starting a new loop
-        plotter.clear()
+        plotter.remove_actor(actor)
     
     plotter.close() # close plotter
 
