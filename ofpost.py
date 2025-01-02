@@ -8,6 +8,7 @@ Maintainer: TheBusyDev <https://github.com/TheBusyDev/>
 import os
 import re
 import sys
+import argparse
 import numpy as np
 import pandas as pd
 import pyvista as pv
@@ -17,9 +18,26 @@ from typing import Generator
 
 
 
-# ------------------ CONSTANTS ------------------
-CASE_TYPE = '2D' # other option: 3D
+# ------------------ INPUT ARGUMENTS ------------------
+parser = argparse.ArgumentParser(prog='ofpost',
+                                 description='A powerful tool to to post-process OpenFOAM simulations.',
+                                 allow_abbrev=False,
+                                 formatter_class=argparse.RawTextHelpFormatter)
 
+parser.add_argument('-c', '--case',
+                    type=str, default='3D', required=False, help="case type ('2D' or '3D').\nDefault: '3D'")
+
+parser.add_argument('-s', '--steady',
+                    type=str, default='no', required=False, help="steady case ('yes' or 'no').\nDefalt: 'no'")
+
+args = parser.parse_args()
+
+CASE_TYPE = args.case
+IS_STEADY = (args.steady == 'yes')
+
+
+
+# ------------------ CONSTANTS ------------------
 ALL_COMPONENTS = ['_x', '_y', '_z'] # all possible arrays components
 
 match CASE_TYPE:
@@ -46,9 +64,17 @@ UNITS_OF_MEASURE = {
     'Time': 's' # time
 }
 
+if CASE_TYPE == '2D':
+    UNITS_OF_MEASURE['F'] = 'N/m'
+    UNITS_OF_MEASURE['M'] = 'N*m/m'
+
+if IS_STEADY:
+    UNITS_OF_MEASURE['Time'] = ''
+
 VTK_FILE = r'.*\.vtk' # .vtk file
 CLOUD_FILE = r'cloud_.*\.vtk'
 RES_FILE = r'residuals\.dat' # residuals file
+YPLUS_FILE = r'yPlus\.dat'
 XY_FILE = r'.*\.xy' # .cy file
 FORCE_FILE = r'forces\.dat' # forces.dat file
 
@@ -81,7 +107,7 @@ PLOTTER_OPTIONS = {
     'background_color': 'white',
 }
 
-CAMERA_SCALING = 1.0
+CAMERA_SCALING = 0.8
 
 
 
@@ -286,10 +312,10 @@ def vtk2svg(filepath: str) -> None:
     
     # create a new plotter for pyvista, load mesh and adjust camera
     plotter = pv.Plotter(off_screen=True)
-    actor = plotter.add_mesh(mesh)
+    plotter.add_mesh(mesh)
     adjust_camera(plotter)
     plotter.show_axes()
-    plotter.remove_actor(actor)
+    plotter.clear()
 
     # adjust plotter options
     for key, value in PLOTTER_OPTIONS.items():
@@ -298,10 +324,10 @@ def vtk2svg(filepath: str) -> None:
     # loop around the modified arrays
     for array_name in data.keys():
         # plot array and set plot properties
-        actor = plotter.add_mesh(mesh,
-                                 scalars=array_name,
-                                 cmap=colormaps[array_name],
-                                 scalar_bar_args=SCALAR_BAR_ARGS)
+        plotter.add_mesh(mesh,
+                         scalars=array_name,
+                         cmap=colormaps[array_name],
+                         scalar_bar_args=SCALAR_BAR_ARGS)
 
         # remove units from array name
         array_name = re.sub(r'\[.*?\]', '', array_name)
@@ -312,7 +338,7 @@ def vtk2svg(filepath: str) -> None:
         plotter.save_graphic(outfilepath)
         
         # clear plotter before starting a new loop
-        plotter.remove_actor(actor)
+        plotter.clear()
     
     plotter.close() # close plotter
 
@@ -345,13 +371,17 @@ def read_labels(filepath: str) -> list[str]:
     return labels
 
 
-def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False, append_units: bool=True) -> None:
+def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False, append_units: bool=True, filesuffix: str='') -> None:
     '''
     Plot data from .dat files and save figure. \\
     Receive pandas DataFrame and source filepath as input.
     '''
     # create new plot
     x = df.iloc[:,0]
+
+    if IS_STEADY and x.name == 'Time':
+        x.name = 'Iterations'
+
     fig, ax = plt.subplots(**FIGURE_ARGS)
 
     # loop around DataFrame
@@ -366,7 +396,7 @@ def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False, append_unit
         else:
             ax.semilogy(x, y, label=label)
 
-    outfilepath, filename, timestep, outdirname = get_output_filepath(filepath)
+    outfilepath, filename, timestep, outdirname = get_output_filepath(filepath, filesuffix)
 
     # set plot title
     title = outdirname
@@ -418,6 +448,53 @@ def read_dat(filepath: str, semilogy: bool=False, append_units: bool=True) -> No
     
     # plot data and save svg
     plot_data(data, filepath, semilogy, append_units)
+
+
+def read_yplus(filepath: str) -> None:
+    '''
+    Read data from 'yPlus.dat' files and save plot.
+    '''
+    # initialize labels
+    labels = read_labels(filepath)
+
+    # retrive data from yPlus.dat file
+    try:
+        data = pd.read_csv(filepath, 
+                           comment='#',
+                           delimiter=r'\t+|\s+',
+                           engine='python',
+                           names=labels) # set labels
+    except:
+        print(f'ERROR: unable to load {filepath}.')
+        return
+
+    # get patch and time DataFrames
+    patches = data['patch'].drop_duplicates()
+    time = data['Time'].drop_duplicates()
+    time.reset_index(drop=True, inplace=True)
+
+    # define columns to be renamed
+    columns = {
+        'min': 'min. yPlus',
+        'max': 'max. yPlus',
+        'average': 'avg. yPlus'
+    }
+
+    # loop around all the columns
+    for col, new_col in columns.items():
+        new_data = time # initialize new DataFrame
+
+        # extract patch data and rename columns for each patch
+        for patch in patches:
+            patch_data = data.loc[data['patch'] == patch]
+            patch_data = patch_data[col]
+            patch_data.name = f'{new_col} {patch}'
+            patch_data.reset_index(drop=True, inplace=True)
+
+            new_data = pd.concat([new_data, patch_data], axis=1) # concatenate new data
+
+        # plot selected data
+        plot_data(new_data, filepath, filesuffix=col)
 
 
 def read_forces(filepath: str) -> None:
@@ -479,8 +556,6 @@ def read_forces(filepath: str) -> None:
     # plot forces and save svg
     plot_data(forces, filepath)
 
-    return forces
-
 
 
 # ------------------ MAIN PROGRAM ------------------
@@ -499,7 +574,11 @@ def main() -> None:
     for res_file in find_files(RES_FILE):
         print(f'\nProcessing {res_file}...')
         read_dat(res_file, semilogy=True, append_units=False)
-    
+
+    for yplus_file in find_files(YPLUS_FILE):
+        print(f'\nProcessing {yplus_file}...')
+        read_yplus(yplus_file)
+
     for xy_file in find_files(XY_FILE):
         print(f'\nProcessing {xy_file}...')
         read_dat(xy_file)
