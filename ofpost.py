@@ -1,7 +1,7 @@
 '''
 Load and post-process OpenFOAM simulations. \\
-.vtk files will be saved as .svg through PyVista. \\
-.dat files will be plotted as .svg through matplotlib.
+.vtk files will be saved as .png through PyVista. \\
+.dat files will be plotted as .png through matplotlib.
 
 Maintainer: TheBusyDev <https://github.com/TheBusyDev/>
 '''
@@ -38,15 +38,7 @@ IS_STEADY = (args.steady == 'yes')
 
 
 # ------------------ CONSTANTS ------------------
-ALL_COMPONENTS = ['_x', '_y', '_z'] # all possible arrays components
-
-match CASE_TYPE:
-    case '2D': IN_COMPONENTS = ['_x', '_y']       # in-plane components (for 2D case)
-    case '3D': IN_COMPONENTS = ['_x', '_y', '_z'] # components 
-
-# out-of-plane components (for 2D case)
-OUT_COMPONENTS = [comp for comp in ALL_COMPONENTS
-                  if comp not in IN_COMPONENTS]
+COMPONENTS = ['_x', '_y', '_z'] # all possible arrays components
 
 FORCE_LABEL = 'F'
 MOMENT_LABEL = 'M'
@@ -65,6 +57,7 @@ UNITS_OF_MEASURE = {
 }
 
 if CASE_TYPE == '2D':
+    UNITS_OF_MEASURE['p'] = 'm^2/s^2'
     UNITS_OF_MEASURE['F'] = 'N/m'
     UNITS_OF_MEASURE['M'] = 'N*m/m'
 
@@ -113,8 +106,8 @@ CAMERA_SCALING = 0.8
 
 # ------------------ MATPLOTLIB OPTIONS ------------------
 FIGURE_ARGS = {
-    'figsize': [8, 6],
-    'dpi': 125
+    # 'figsize': [8, 6],
+    'dpi': 250
 }
 
 
@@ -154,7 +147,7 @@ def find_files(pattern: str, exceptions: list[str]=[]) -> Generator[str, None, N
 
 def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, str, str]:
     '''
-    Return output filepath (with .svg extension), input filename, timestep and output directory name. \\
+    Return output filepath (with .png extension), input filename, timestep and output directory name. \\
     If 'filesuffix' is provided, then files will be generated with the specificed suffix.
     '''
     # get timestep and output path based on OpenFOAM convention
@@ -182,7 +175,7 @@ def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, st
     if timestep != '0':
         outfilename += '_' + timestep # add timestep to output filename
     
-    outfilename += '.svg' # add extension to output filename
+    outfilename += '.png' # add extension to output filename
     outfilepath = os.path.join(outpath, outfilename) # output file path
     print(f'Output file: {outfilepath}')
 
@@ -202,7 +195,7 @@ def get_units(array_name: str) -> str:
         pass
 
     # remove extension from components
-    for comp in ALL_COMPONENTS:
+    for comp in COMPONENTS:
         if array_name.endswith(comp):
             array_name = array_name.removesuffix(comp)
             break
@@ -255,9 +248,9 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     ]
 
 
-def vtk2svg(filepath: str) -> None:
+def vtk2png(filepath: str) -> None:
     '''
-    Load .vtk file and convert it to .svg.
+    Load .vtk file and convert it to .png.
     '''
     # load VTK file and get array names contained inside it
     mesh = pv.read(filepath)
@@ -290,7 +283,7 @@ def vtk2svg(filepath: str) -> None:
         # detect 3D arrays
         if array.shape[-1] == 3:
             # split arrays in their components 
-            for index, comp in enumerate(IN_COMPONENTS):
+            for index, comp in enumerate(COMPONENTS):
                 new_name = array_name + comp + units
                 data[new_name] = array[:, index]
                 colormaps[new_name] = colormaps[array_name] # add entry to colormap
@@ -333,9 +326,9 @@ def vtk2svg(filepath: str) -> None:
         array_name = re.sub(r'\[.*?\]', '', array_name)
         array_name = re.sub(r'\s+', '', array_name)
 
-        # create output directory and save array as svg
+        # create output directory and save array as png
         outfilepath, *_ = get_output_filepath(filepath, filesuffix=array_name)
-        plotter.save_graphic(outfilepath)
+        plotter.screenshot(outfilepath)
         
         # clear plotter before starting a new loop
         plotter.clear()
@@ -343,9 +336,9 @@ def vtk2svg(filepath: str) -> None:
     plotter.close() # close plotter
 
 
-def cloud2svg(filepath: str) -> None:
+def cloud2png(filepath: str) -> None:
     '''
-    Load cloud*.vtk file and convert it to .svg.
+    Load cloud*.vtk file and convert it to .png.
     '''
     pass # TODO: implement lagrangian particle tracking
 
@@ -436,17 +429,9 @@ def read_dat(filepath: str, semilogy: bool=False, append_units: bool=True) -> No
                            names=labels) # set labels
     except:
         print(f'ERROR: unable to load {filepath}.')
-        return
+        return             
     
-    # do not plot out-of-plane component in 2D case
-    if CASE_TYPE == '2D':        
-        for label in labels:
-            for comp in OUT_COMPONENTS:
-                if label.endswith(comp):
-                    data.drop(label, axis=1, inplace=True) # drop out-of-plane component
-                    break                
-    
-    # plot data and save svg
+    # plot data and save png
     plot_data(data, filepath, semilogy, append_units)
 
 
@@ -528,33 +513,30 @@ def read_forces(filepath: str) -> None:
         print(f'ERROR: unable to load {filepath}.')
         return
 
-    # save iterations to 'forces' DataFrame
-    forces = pd.DataFrame()
-    forces['Time'] = data.iloc[:,0]
+    def sum_contribs(start_index: int, label: str, n_contribs: int) -> pd.DataFrame:
+        # initialize DataFrame and save Time to DataFrame
+        df = pd.DataFrame()
+        df['Time'] = data.iloc[:,0]
 
-    def sum_contribs(forces, start_index, labels, n_contribs):
         # sum contributions from pressure, viscosity and porosity
         indices = range(start_index, start_index+3)
+        labels = [label + comp for comp in COMPONENTS]
 
         for index, label in zip(indices, labels):
             sum_axes = [index + 3*n for n in range(n_contribs)] # get axes to be summed
-            forces[label] = data.iloc[:, sum_axes].sum(axis=1)
+            df[label] = data.iloc[:, sum_axes].sum(axis=1)
+        
+        return df
 
-    # get forces
-    f_labels = [FORCE_LABEL + comp for comp in IN_COMPONENTS]
+    # get forces and save plot
     start_index = 1
-    sum_contribs(forces, start_index, f_labels, n_contribs)
+    forces = sum_contribs(start_index, FORCE_LABEL, n_contribs)
+    plot_data(forces, filepath, filesuffix='forces')
 
-    # get moments
-    match CASE_TYPE:
-        case '2D': m_labels = [MOMENT_LABEL + comp for comp in OUT_COMPONENTS]
-        case '3D': m_labels = [MOMENT_LABEL + comp for comp in IN_COMPONENTS]
-
+    # get moments and save plot
     start_index = 1 + 3*n_contribs
-    sum_contribs(forces, start_index, m_labels, n_contribs)
-
-    # plot forces and save svg
-    plot_data(forces, filepath)
+    moments = sum_contribs(start_index, MOMENT_LABEL, n_contribs)
+    plot_data(moments, filepath, filesuffix='moments')
 
 
 
@@ -563,12 +545,12 @@ def main() -> None:
     # analyze .vtk files
     for vtk_file in find_files(VTK_FILE, exceptions=[CLOUD_FILE]):
         print(f'\nProcessing {vtk_file}...')
-        vtk2svg(vtk_file)
+        vtk2png(vtk_file)
 
     # analyze cloud files for lagrangian particle tracking
     for cloud_file in find_files(CLOUD_FILE):
         print(f'\nProcessing {cloud_file}...')
-        cloud2svg(cloud_file)
+        cloud2png(cloud_file)
     
     # analyze .dat and .xy files
     for res_file in find_files(RES_FILE):
