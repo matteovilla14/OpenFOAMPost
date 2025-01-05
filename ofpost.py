@@ -64,12 +64,13 @@ if CASE_TYPE == '2D':
 if IS_STEADY:
     UNITS_OF_MEASURE['Time'] = ''
 
-VTK_FILE = r'.*\.vtk' # .vtk file
+VTK_FILE = r'.*\.vtk'           # .vtk file
 CLOUD_FILE = r'cloud_.*\.vtk'
-RES_FILE = r'residuals\.dat' # residuals file
-YPLUS_FILE = r'yPlus\.dat'
-XY_FILE = r'.*\.xy' # .cy file
-FORCE_FILE = r'forces\.dat' # forces.dat file
+RES_FILE = r'residuals\.dat'    # residuals file
+WALL_SHEAR_FILE = r'wallShearStress\.dat' # wallShearStress.dat file
+DAT_FILE = r'.*\.dat'           # .dat file
+XY_FILE = r'.*\.xy'             # .xy file
+FORCE_FILE = r'forces\.dat'     # forces.dat file
 
 
 
@@ -93,6 +94,10 @@ SCALAR_BAR_ARGS = {
     'title_font_size': 20,
     'label_font_size': 18,
     'font_family': 'times'
+}
+
+MESH_ARGS = {
+    'n_colors': 255 # number of color levels for colormap
 }
 
 PLOTTER_OPTIONS = {
@@ -170,7 +175,12 @@ def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, st
     outfilename = filename # output filename
 
     if filesuffix != '':
-        outfilename += '_' + filesuffix # add filesuffix to output filename
+        # remove illegal characters from filesuffix
+        filesuffix = filesuffix.replace('/', '')
+        filesuffix = filesuffix.replace('\\', '')
+        filesuffix = filesuffix.replace(' ', '')
+        # add filesuffix to output filename
+        outfilename += '_' + filesuffix
 
     if timestep != '0':
         outfilename += '_' + timestep # add timestep to output filename
@@ -186,13 +196,26 @@ def get_units(array_name: str) -> str:
     '''
     Get units of measurement based on input array. \\
     Return empty string if array is not found.
-    '''    
+    ''' 
     # detect units of measurement
     try:
         units = ' [' + UNITS_OF_MEASURE[array_name] + ']'
         return units
     except KeyError:
         pass
+
+    # try to extract array_name
+    match = re.search(r'\((.*?)\)', array_name)
+
+    if match != None:
+        array_name = match.groups()[0]
+
+        # try again to detect units of measurement
+        try:
+            units = ' [' + UNITS_OF_MEASURE[array_name] + ']'
+            return units
+        except KeyError:
+            pass
 
     # remove extension from components
     for comp in COMPONENTS:
@@ -320,7 +343,8 @@ def vtk2png(filepath: str) -> None:
         plotter.add_mesh(mesh,
                          scalars=array_name,
                          cmap=colormaps[array_name],
-                         scalar_bar_args=SCALAR_BAR_ARGS)
+                         scalar_bar_args=SCALAR_BAR_ARGS,
+                         **MESH_ARGS)
 
         # remove units from array name
         array_name = re.sub(r'\[.*?\]', '', array_name)
@@ -353,13 +377,22 @@ def read_labels(filepath: str) -> list[str]:
             if line == '' or line[0] != '#':
                 break
 
-            labels = line
+            orig_labels = line
     
-    # analyze last line and get labels
-    try:
-        labels = labels.strip().removeprefix('#').split() 
-    except:
-        labels = []
+    # manipulate line
+    orig_labels = orig_labels.strip()
+    orig_labels = orig_labels.removeprefix('#')
+    orig_labels = orig_labels.split() # original version of labels
+
+    # create labels list
+    labels = []
+
+    for label in orig_labels:
+        # do not append units of measurement
+        if not re.match(r'\[.*\]', label):
+            labels.append(label)
+        else:
+            labels[-1] += f' {label}' # append units at the end of the latest label
 
     return labels
 
@@ -420,28 +453,6 @@ def read_dat(filepath: str, semilogy: bool=False, append_units: bool=True) -> No
     # initialize labels
     labels = read_labels(filepath)
 
-    # retrive data from .dat file
-    try:
-        data = pd.read_csv(filepath, 
-                           comment='#',
-                           delimiter=r'\t+|\s+',
-                           engine='python',
-                           names=labels) # set labels
-    except:
-        print(f'ERROR: unable to load {filepath}.')
-        return             
-    
-    # plot data and save png
-    plot_data(data, filepath, semilogy, append_units)
-
-
-def read_yplus(filepath: str) -> None:
-    '''
-    Read data from 'yPlus.dat' files and save plot.
-    '''
-    # initialize labels
-    labels = read_labels(filepath)
-
     # retrive data from yPlus.dat file
     try:
         data = pd.read_csv(filepath, 
@@ -449,8 +460,14 @@ def read_yplus(filepath: str) -> None:
                            delimiter=r'\t+|\s+',
                            engine='python',
                            names=labels) # set labels
-    except:
-        print(f'ERROR: unable to load {filepath}.')
+    except Exception as e:
+        print(f'ERROR: unable to load {filepath}:')
+        print(e)
+        return
+    
+    # plot data and save png
+    if 'patch' not in data.columns:
+        plot_data(data, filepath, semilogy, append_units)
         return
 
     # get patch and time DataFrames
@@ -458,28 +475,48 @@ def read_yplus(filepath: str) -> None:
     time = data['Time'].drop_duplicates()
     time.reset_index(drop=True, inplace=True)
 
-    # define columns to be renamed
-    columns = {
-        'min': 'min. yPlus',
-        'max': 'max. yPlus',
-        'average': 'avg. yPlus'
-    }
+    # define field name
+    field = os.path.basename(filepath)
+    field = field.removesuffix('.dat')
+
+    # find columns
+    target_columns = ['min', 'max', 'average']
+    old_columns = []
+
+    for col in data.columns:
+        if any([col.startswith(tc) for tc in target_columns]):
+            old_columns.append(col)
+    
+    new_columns = [f'{field} {col}' for col in old_columns]
+
+    # rename columns inside DataFrame
+    columns = {old_col: new_col
+               for old_col, new_col in zip(old_columns, new_columns)}
+    data.rename(columns=columns, inplace=True)
 
     # loop around all the columns
-    for col, new_col in columns.items():
+    for col in data.columns:
+        # skip useless columns
+        if col in ['Time', 'patch']:
+            continue
+
         new_data = time # initialize new DataFrame
 
         # extract patch data and rename columns for each patch
         for patch in patches:
+            # extract patch data
             patch_data = data.loc[data['patch'] == patch]
             patch_data = patch_data[col]
-            patch_data.name = f'{new_col} {patch}'
+
+            # insert patch name to column name
+            patch_data.name = f'{patch} {patch_data.name}'
             patch_data.reset_index(drop=True, inplace=True)
 
-            new_data = pd.concat([new_data, patch_data], axis=1) # concatenate new data
+            # concatenate new data
+            new_data = pd.concat([new_data, patch_data], axis=1) 
 
         # plot selected data
-        plot_data(new_data, filepath, filesuffix=col)
+        plot_data(new_data, filepath, semilogy, append_units, filesuffix=col)
 
 
 def read_forces(filepath: str) -> None:
@@ -509,8 +546,9 @@ def read_forces(filepath: str) -> None:
                            comment='#', 
                            delimiter=r'\t+|\s+',
                            engine='python')
-    except:
-        print(f'ERROR: unable to load {filepath}.')
+    except Exception as e:
+        print(f'ERROR: unable to load {filepath}:')
+        print(e)
         return
 
     def sum_contribs(start_index: int, label: str, n_contribs: int) -> pd.DataFrame:
@@ -557,10 +595,10 @@ def main() -> None:
         print(f'\nProcessing {res_file}...')
         read_dat(res_file, semilogy=True, append_units=False)
 
-    for yplus_file in find_files(YPLUS_FILE):
-        print(f'\nProcessing {yplus_file}...')
-        read_yplus(yplus_file)
-
+    for dat_file in find_files(DAT_FILE, exceptions=[RES_FILE, WALL_SHEAR_FILE, FORCE_FILE]):
+        print(f'\nProcessing {dat_file}...')
+        read_dat(dat_file)
+    
     for xy_file in find_files(XY_FILE):
         print(f'\nProcessing {xy_file}...')
         read_dat(xy_file)
