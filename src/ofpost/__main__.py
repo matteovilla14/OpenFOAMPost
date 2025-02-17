@@ -1,7 +1,7 @@
 '''
 Load and post-process OpenFOAM simulations. \\
-.vtk files will be saved as .png through PyVista. \\
-.dat files will be plotted as .png through matplotlib.
+.vtk files will be exported as images through PyVista. \\
+.dat files will be plotted through matplotlib.
 
 Maintainer: TheBusyDev <https://github.com/TheBusyDev/>
 '''
@@ -415,7 +415,7 @@ def vtk2image(filepath: str) -> None:
         array_name = re.sub(r'\[.*?\]', '', array_name)
         array_name = re.sub(r'\s+', '', array_name)
 
-        # create output directory and save array as png
+        # create output directory and export mesh as image
         outfilepath, *_ = get_output_filepath(filepath, filesuffix=array_name)
 
         try:
@@ -526,7 +526,7 @@ def read_dat(filepath: str, semilogy: bool=False, append_units: bool=True) -> No
                        engine='python',
                        names=labels) # set labels
     
-    # plot data and save png
+    # plot data and save image
     if 'patch' not in data.columns:
         plot_data(data, filepath, semilogy, append_units)
         return
