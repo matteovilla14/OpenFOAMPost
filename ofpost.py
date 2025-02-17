@@ -19,20 +19,44 @@ from typing import Generator
 
 
 # ------------------ INPUT ARGUMENTS ------------------
+SUPPORTED_EXTENSIONS = [
+    '.png',
+    '.jpg',
+    '.svg',
+    '.eps',
+    '.pdf',
+]
+
 parser = argparse.ArgumentParser(prog='ofpost',
                                  description='A powerful tool to to post-process OpenFOAM simulations.',
                                  allow_abbrev=False,
                                  formatter_class=argparse.RawTextHelpFormatter)
 
 parser.add_argument('-c', '--case',
-                    type=str, default='3D', required=False, help="case type ('2D' or '3D').\nDefault: '3D'")
+                    type=str,
+                    choices=['2D', '3D'],
+                    default='3D',
+                    required=False,
+                    help="select case type ('2D' or '3D'). Default: '3D'\n\n")
+
+parser.add_argument('-f', '--format',
+                    type=str,
+                    choices=SUPPORTED_EXTENSIONS,
+                    default=SUPPORTED_EXTENSIONS[0],
+                    required=False,
+                    help=f"select file format. Default: '{SUPPORTED_EXTENSIONS[0]}'\n\n")
 
 parser.add_argument('-s', '--steady',
-                    type=str, default='no', required=False, help="steady case ('yes' or 'no').\nDefalt: 'no'")
+                    type=str,
+                    choices=['yes', 'no'],
+                    default='no',
+                    required=False,
+                    help="set steady-state case.\nDefault: 'no'\n\n")
 
 args = parser.parse_args()
 
 CASE_TYPE = args.case
+EXTENSION = args.format
 IS_STEADY = (args.steady == 'yes')
 
 
@@ -53,15 +77,15 @@ UNITS_OF_MEASURE = {
     'x': 'm',   # x direction
     'y': 'm',   # y direction
     'z': 'm',   # z direction
+    'delta': 'm', # film thickness
     'Time': 's' # time
 }
 
 if CASE_TYPE == '2D':
-    UNITS_OF_MEASURE['p'] = 'm^2/s^2'
     UNITS_OF_MEASURE['F'] = 'N/m'
     UNITS_OF_MEASURE['M'] = 'N*m/m'
 
-if IS_STEADY:
+if IS_STEADY:    
     UNITS_OF_MEASURE['Time'] = ''
 
 VTK_FILE = r'.*\.vtk'           # .vtk file
@@ -81,7 +105,12 @@ COLORMAPS = {
     'p': 'coolwarm',
     'U': 'turbo',
     'T': 'inferno',
-    'Ma': 'turbo'
+    'Ma': 'turbo',
+    'C7H16': 'hot',
+    'H2': 'hot',
+    'O2': 'viridis',
+    'N2': 'winter',
+    'H2O': 'ocean'
 }
 
 SCALAR_BAR_ARGS = {
@@ -97,7 +126,10 @@ SCALAR_BAR_ARGS = {
 }
 
 MESH_ARGS = {
-    'n_colors': 255 # number of color levels for colormap
+    'n_colors': 255, # number of color levels for colormap
+    # 'show_edges': True, # uncomment to show the underlying mesh
+    # 'edge_color': [200]*3,
+    # 'line_width': 2
 }
 
 PLOTTER_OPTIONS = {
@@ -152,7 +184,7 @@ def find_files(pattern: str, exceptions: list[str]=[]) -> Generator[str, None, N
 
 def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, str, str]:
     '''
-    Return output filepath (with .png extension), input filename, timestep and output directory name. \\
+    Return output filepath (with extension), input filename, timestep and output directory name. \\
     If 'filesuffix' is provided, then files will be generated with the specificed suffix.
     '''
     # get timestep and output path based on OpenFOAM convention
@@ -185,7 +217,7 @@ def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, st
     if timestep != '0':
         outfilename += '_' + timestep # add timestep to output filename
     
-    outfilename += '.png' # add extension to output filename
+    outfilename += EXTENSION # add extension to output filename
     outfilepath = os.path.join(outpath, outfilename) # output file path
     print(f'Output file: {outfilepath}')
 
@@ -259,10 +291,12 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     focal_point = mesh.center
 
     # compute camera view-up orientation
-    delta_bounds = np.delete(delta_bounds, normal_idx)
-    view_up_idx = np.argmin(delta_bounds)
+    delta_bounds[normal_idx] = np.inf # needed to avoid the normal direction as view-up direction
+    min_bound = np.min(delta_bounds)
+    min_indices, = np.where(delta_bounds == min_bound)
+    view_up_idx = min_indices[-1] # get view-up direction
     view_up = np.zeros(3)
-    view_up[view_up_idx] = 1
+    view_up[view_up_idx] = 1 if view_up_idx != 2 else -1
 
     plotter.camera_position = [
         camera_position,
@@ -271,9 +305,9 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     ]
 
 
-def vtk2png(filepath: str) -> None:
+def vtk2image(filepath: str) -> None:
     '''
-    Load .vtk file and convert it to .png.
+    Load .vtk file and convert it to image format as specified by the user.
     '''
     # load VTK file and get array names contained inside it
     mesh = pv.read(filepath)
@@ -352,7 +386,11 @@ def vtk2png(filepath: str) -> None:
 
         # create output directory and save array as png
         outfilepath, *_ = get_output_filepath(filepath, filesuffix=array_name)
-        plotter.screenshot(outfilepath)
+
+        try:
+            plotter.screenshot(outfilepath)
+        except ValueError:
+            plotter.save_graphic(outfilepath)
         
         # clear plotter before starting a new loop
         plotter.clear()
@@ -364,7 +402,7 @@ def cloud2png(filepath: str) -> None:
     '''
     Load cloud*.vtk file and convert it to .png.
     '''
-    pass # TODO: implement lagrangian particle tracking
+    pass # TODO: implement lagrangian particle tracking --> REMOVE
 
 
 def read_labels(filepath: str) -> list[str]:
@@ -379,10 +417,13 @@ def read_labels(filepath: str) -> list[str]:
 
             orig_labels = line
     
-    # manipulate line
-    orig_labels = orig_labels.strip()
-    orig_labels = orig_labels.removeprefix('#')
-    orig_labels = orig_labels.split() # original version of labels
+    try:
+        # manipulate labels
+        orig_labels = orig_labels.strip()
+        orig_labels = orig_labels.removeprefix('#')
+        orig_labels = orig_labels.split() # original version of labels
+    except:
+        return [] # return empty list if any error occured
 
     # create labels list
     labels = []
@@ -408,7 +449,7 @@ def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False, append_unit
     if IS_STEADY and x.name == 'Time':
         x.name = 'Iterations'
 
-    fig, ax = plt.subplots(**FIGURE_ARGS)
+    fig = plt.figure(**FIGURE_ARGS)
 
     # loop around DataFrame
     for label, y in df.iloc[:, 1:].items():
@@ -418,9 +459,9 @@ def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False, append_unit
 
         # plot data from DataFrame
         if not semilogy:
-            ax.plot(x, y, label=label)
+            plt.plot(x, y, label=label)
         else:
-            ax.semilogy(x, y, label=label)
+            plt.semilogy(x, y, label=label)
 
     outfilepath, filename, timestep, outdirname = get_output_filepath(filepath, filesuffix)
 
@@ -435,13 +476,13 @@ def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False, append_unit
     xlabel = x.name + get_units(x.name)
     
     # set plot properties
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.grid()
-    ax.legend()
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.grid()
+    plt.legend()
 
     # save figure
-    fig.savefig(outfilepath)    
+    plt.savefig(outfilepath)
     plt.close(fig) # close figure once it's saved
 
 
@@ -583,7 +624,7 @@ def main() -> None:
     # analyze .vtk files
     for vtk_file in find_files(VTK_FILE, exceptions=[CLOUD_FILE]):
         print(f'\nProcessing {vtk_file}...')
-        vtk2png(vtk_file)
+        vtk2image(vtk_file)
 
     # analyze cloud files for lagrangian particle tracking
     for cloud_file in find_files(CLOUD_FILE):
