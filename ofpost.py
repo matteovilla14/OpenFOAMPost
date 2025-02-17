@@ -429,13 +429,6 @@ def vtk2image(filepath: str) -> None:
     plotter.close() # close plotter
 
 
-def cloud2png(filepath: str) -> None:
-    '''
-    Load cloud*.vtk file and convert it to .png.
-    '''
-    pass # TODO: implement lagrangian particle tracking --> REMOVE
-
-
 def read_labels(filepath: str) -> list[str]:
     '''
     Get labels from file (i.e. the last comment line).
@@ -647,10 +640,6 @@ def main() -> None:
     # analyze .vtk files
     for vtk_file in find_files(VTK_FILE, exceptions=[CLOUD_FILE]):
         vtk2image(vtk_file)
-
-    # analyze cloud files for lagrangian particle tracking
-    for cloud_file in find_files(CLOUD_FILE):
-        cloud2png(cloud_file)
     
     # analyze .dat and .xy files
     for res_file in find_files(RES_FILE):
