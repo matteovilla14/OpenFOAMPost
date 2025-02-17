@@ -23,14 +23,14 @@ sudo dnf install wget python3-pip pipx
 ### Install package
 You can install the wheel package through *pipx* (this is the suggested option) 🚀:
 ```
-wget https://github.com/TheBusyDev/OpenFOAMPost/releases/download/v1.0.0/ofpost-1.0.0-py3-none-any.whl
-pipx install ofpost-1.0.0-py3-none-any.whl
+wget https://github.com/TheBusyDev/OpenFOAMPost/releases/download/ofpost-stable/ofpost-py3.whl
+pipx install ofpost-py3.whl
 pipx ensurepath
 ```
 or, alternatively, through *pip* (not supported starting from Ubuntu 24.04):
 ```
-wget https://github.com/TheBusyDev/OpenFOAMPost/releases/download/v1.0.0/ofpost-1.0.0-py3-none-any.whl
-pip install ofpost-1.0.0-py3-none-any.whl
+wget https://github.com/TheBusyDev/OpenFOAMPost/releases/download/ofpost-stable/ofpost-py3.whl
+pip install ofpost-py3.whl
 ```
 
 
