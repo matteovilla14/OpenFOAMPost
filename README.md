@@ -23,13 +23,13 @@ sudo dnf install wget python3-pip pipx
 ### Install package
 You can install the wheel package through *pipx* (this is the suggested option) 🚀:
 ```
-wget https://github.com/TheBusyDev/OpenFOAMPost/releases/download/ofpost-stable/ofpost-1.0.0-py3-none-any.whl
+wget https://github.com/TheBusyDev/OpenFOAMPost/releases/download/ofpost-stable/ofpost-1.0.0-py3-none-any.whl > /dev/null
 pipx install ofpost-1.0.0-py3-none-any.whl
 pipx ensurepath
 ```
 or, alternatively, through *pip* (not supported starting from Ubuntu 24.04):
 ```
-wget https://github.com/TheBusyDev/OpenFOAMPost/releases/download/ofpost-stable/ofpost-1.0.0-py3-none-any.whl
+wget https://github.com/TheBusyDev/OpenFOAMPost/releases/download/ofpost-stable/ofpost-1.0.0-py3-none-any.whl > /dev/null
 pip install ofpost-1.0.0-py3-none-any.whl
 ```
 
@@ -60,9 +60,10 @@ All sorts of contributions are well-welcomed 🤗! You can start by cloning the 
 ```
 git clone https://github.com/TheBusyDev/OpenFOAMPost.git
 ```
-Then all the necessary variables can be initialized by executing:
+Then, the necessary modules can be installed and the environment variables can be initialized by executing:
 ```
 cd OpenFOAMPost
+pip install requirements.txt
 source init.sh
 ```
 
@@ -80,6 +81,13 @@ ofclean
 ```
 
 All the source files can be found in [/src/ofpost](/src/ofpost) directory! Enjoy! 🤓
+
+
+## How to build
+In order to build a new package, a new version can be specified in the [VERSION.txt](/VERSION.txt) file. Then, the package can be created by executing:
+```
+python -m build
+``` 
 
 
 ## Examples
