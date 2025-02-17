@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import argparse
+import traceback
 import numpy as np
 import pandas as pd
 import pyvista as pv
@@ -24,7 +25,7 @@ SUPPORTED_EXTENSIONS = [
     '.jpg',
     '.svg',
     '.eps',
-    '.pdf',
+    '.pdf'
 ]
 
 parser = argparse.ArgumentParser(prog='ofpost',
@@ -102,7 +103,6 @@ if IS_STEADY:
 VTK_FILE = r'.*\.vtk'           # .vtk file
 CLOUD_FILE = r'cloud_.*\.vtk'
 RES_FILE = r'residuals\.dat'    # residuals file
-WALL_SHEAR_FILE = r'wallShearStress\.dat' # wallShearStress.dat file
 DAT_FILE = r'.*\.dat'           # .dat file
 XY_FILE = r'.*\.xy'             # .xy file
 FORCE_FILE = r'forces\.dat'     # forces.dat file
@@ -148,7 +148,7 @@ PLOTTER_OPTIONS = {
     'background_color': 'white',
 }
 
-CAMERA_SCALING = 0.8
+CAMERA_ZOOM = 1.75
 
 
 
@@ -204,7 +204,7 @@ def read_file_decorator(read_file: Callable) -> Callable:
             read_file(filepath, **kwargs)
         except Exception as e:
             print(f'ERROR: unable to process {os.path.basename(filepath)}:')
-            print(e)
+            traceback.print_exception(e)
     
     return wrapper
 
@@ -295,7 +295,7 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     '''
     Try to infer slice normal direction and adjust plotter camera position. \\
     If normal direction is not computed correctly \\
-    or slice is not aligned with x, y or z direction, then reset camera.
+    or slice is not aligned with x, y or z direction, then just reset camera.
     '''
     mesh = plotter.mesh
 
@@ -304,7 +304,7 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     delta_bounds = np.abs(bounds[1::2] -  bounds[0:-1:2])
     normal_idx, = np.where(delta_bounds < 1e-16) # get zero-thickness direction
     
-    # return None if normal is not found correctly
+    # return if normal is not found correctly
     if len(normal_idx) != 1:
         plotter.reset_camera()
         return
@@ -314,7 +314,7 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     normal[normal_idx] = 1
 
     # set up the camera position and focal point
-    camera_position = mesh.center + normal * CAMERA_SCALING
+    camera_position = mesh.center + normal
     focal_point = mesh.center
 
     # compute camera view-up orientation
@@ -330,6 +330,9 @@ def adjust_camera(plotter: pv.Plotter) -> None:
         focal_point,
         view_up
     ]
+
+    plotter.reset_camera() # camera is reset automatically based on mesh bounds
+    plotter.zoom_camera(CAMERA_ZOOM)
 
 
 @read_file_decorator
@@ -350,7 +353,7 @@ def vtk2image(filepath: str) -> None:
         raise ValueError('ERROR: empty file.')
     
     array_names = data.keys().copy()
-    colormaps = COLORMAPS.copy()
+    colormaps = {}
 
     # loop around all the arrays found in mesh
     for array_name in array_names:
@@ -363,6 +366,12 @@ def vtk2image(filepath: str) -> None:
 
         # detect units of measurement
         units = get_units(array_name)
+
+        # detect array colormap
+        try:
+            array_cmap = COLORMAPS[array_name]
+        except KeyError:
+            array_cmap = DEFAULT_COLORMAP
         
         # detect 3D arrays
         if array.shape[-1] == 3:
@@ -370,22 +379,17 @@ def vtk2image(filepath: str) -> None:
             for index, comp in enumerate(COMPONENTS):
                 new_name = array_name + comp + units
                 data[new_name] = array[:, index]
-                colormaps[new_name] = colormaps[array_name] # add entry to colormap
+                colormaps[new_name] = array_cmap # add entry to colormap for each component
 
             # rename array to indicate its magnitude
-            new_name = array_name + 'mag' + units
+            new_name = array_name + '_mag' + units
         else:
             # add units of measurements to the array
             new_name = array_name + units
         
-        # rename array
+        # rename array and add entry to colormap
         data[new_name] = data.pop(array_name)
-
-        # add entry to colormap
-        try:
-            colormaps[new_name] = colormaps.pop(array_name)
-        except KeyError:
-            colormaps[new_name] = DEFAULT_COLORMAP
+        colormaps[new_name] = array_cmap
     
     # create a new plotter for pyvista, load mesh and adjust camera
     plotter = pv.Plotter(off_screen=True)
@@ -652,7 +656,7 @@ def main() -> None:
     for res_file in find_files(RES_FILE):
         read_dat(res_file, semilogy=True, append_units=False)
 
-    for dat_file in find_files(DAT_FILE, exceptions=[RES_FILE, WALL_SHEAR_FILE, FORCE_FILE]):
+    for dat_file in find_files(DAT_FILE, exceptions=[RES_FILE, FORCE_FILE]):
         read_dat(dat_file)
     
     for xy_file in find_files(XY_FILE):
