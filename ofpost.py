@@ -37,7 +37,7 @@ parser.add_argument('-c', '--case',
                     choices=['2D', '3D'],
                     default='3D',
                     required=False,
-                    help="select case type ('2D' or '3D'). Default: '3D'\n\n")
+                    help="select case type. Default: '3D'\n\n")
 
 parser.add_argument('-f', '--format',
                     type=str,
@@ -46,17 +46,25 @@ parser.add_argument('-f', '--format',
                     required=False,
                     help=f"select file format. Default: '{SUPPORTED_EXTENSIONS[0]}'\n\n")
 
+parser.add_argument('-i', '--incomp',
+                    type=str,
+                    choices=['yes', 'no'],
+                    default='no',
+                    required=False,
+                    help="set incompressible case. Default: 'no'\n\n")
+
 parser.add_argument('-s', '--steady',
                     type=str,
                     choices=['yes', 'no'],
                     default='no',
                     required=False,
-                    help="set steady-state case.\nDefault: 'no'\n\n")
+                    help="set steady-state case. Default: 'no'\n\n")
 
 args = parser.parse_args()
 
-CASE_TYPE = args.case
+IS_2D = (args.case == '2D')
 EXTENSION = args.format
+IS_INCOMP = (args.incomp == 'yes')
 IS_STEADY = (args.steady == 'yes')
 
 
@@ -68,7 +76,7 @@ FORCE_LABEL = 'F'
 MOMENT_LABEL = 'M'
 
 UNITS_OF_MEASURE = {
-    'p': 'Pa',  # pressure - NOTE: it changes when dealing with incompressible cases
+    'p': 'Pa',  # pressure
     'U': 'm/s', # velocity
     'T': 'K',   # temperature
     'Ma': '-',  # Mach number
@@ -81,9 +89,12 @@ UNITS_OF_MEASURE = {
     'Time': 's' # time
 }
 
-if CASE_TYPE == '2D':
+if IS_2D:
     UNITS_OF_MEASURE['F'] = 'N/m'
     UNITS_OF_MEASURE['M'] = 'N*m/m'
+
+if IS_INCOMP:
+    UNITS_OF_MEASURE['p'] = 'm^2/s^2' # kinematic pressure is used in incompressible simulations
 
 if IS_STEADY:    
     UNITS_OF_MEASURE['Time'] = ''
