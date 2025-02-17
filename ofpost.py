@@ -14,7 +14,7 @@ import pandas as pd
 import pyvista as pv
 import matplotlib.pyplot as plt
 from io import StringIO
-from typing import Generator
+from typing import Generator, Callable
 
 
 
@@ -193,6 +193,22 @@ def find_files(pattern: str, exceptions: list[str]=[]) -> Generator[str, None, N
         print(f'No {pattern.pattern} file found.')
 
 
+def read_file_decorator(read_file: Callable) -> Callable:
+    '''
+    Decorator to be applied to read-file functions.
+    '''
+    def wrapper(filepath, **kwargs):
+        print(f'\nProcessing {filepath}...')
+
+        try:
+            read_file(filepath, **kwargs)
+        except Exception as e:
+            print(f'ERROR: unable to process {os.path.basename(filepath)}:')
+            print(e)
+    
+    return wrapper
+
+
 def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, str, str]:
     '''
     Return output filepath (with extension), input filename, timestep and output directory name. \\
@@ -251,7 +267,7 @@ def get_units(array_name: str) -> str:
     match = re.search(r'\((.*?)\)', array_name)
 
     if match != None:
-        array_name = match.groups()[0]
+        array_name = match.group(1)
 
         # try again to detect units of measurement
         try:
@@ -316,6 +332,7 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     ]
 
 
+@read_file_decorator
 def vtk2image(filepath: str) -> None:
     '''
     Load .vtk file and convert it to image format as specified by the user.
@@ -330,8 +347,7 @@ def vtk2image(filepath: str) -> None:
         print('Loading point data...')
         data = mesh.point_data # load point data as alternative
     else:
-        print('ERROR: empty file.')
-        return
+        raise ValueError('ERROR: empty file.')
     
     array_names = data.keys().copy()
     colormaps = COLORMAPS.copy()
@@ -497,6 +513,7 @@ def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False, append_unit
     plt.close(fig) # close figure once it's saved
 
 
+@read_file_decorator
 def read_dat(filepath: str, semilogy: bool=False, append_units: bool=True) -> None:
     '''
     Read data from .dat files \\
@@ -506,16 +523,11 @@ def read_dat(filepath: str, semilogy: bool=False, append_units: bool=True) -> No
     labels = read_labels(filepath)
 
     # retrive data from yPlus.dat file
-    try:
-        data = pd.read_csv(filepath, 
-                           comment='#',
-                           delimiter=r'\t+|\s+',
-                           engine='python',
-                           names=labels) # set labels
-    except Exception as e:
-        print(f'ERROR: unable to load {filepath}:')
-        print(e)
-        return
+    data = pd.read_csv(filepath, 
+                       comment='#',
+                       delimiter=r'\t+|\s+',
+                       engine='python',
+                       names=labels) # set labels
     
     # plot data and save png
     if 'patch' not in data.columns:
@@ -571,6 +583,7 @@ def read_dat(filepath: str, semilogy: bool=False, append_units: bool=True) -> No
         plot_data(new_data, filepath, semilogy, append_units, filesuffix=col)
 
 
+@read_file_decorator
 def read_forces(filepath: str) -> None:
     '''
     Read data from 'forces.dat' files and save plot.
@@ -593,15 +606,10 @@ def read_forces(filepath: str) -> None:
     content = content.replace(')', ' ')
     dummy_file = StringIO(content)
 
-    try:
-        data = pd.read_csv(dummy_file,
-                           comment='#', 
-                           delimiter=r'\t+|\s+',
-                           engine='python')
-    except Exception as e:
-        print(f'ERROR: unable to load {filepath}:')
-        print(e)
-        return
+    data = pd.read_csv(dummy_file,
+                       comment='#', 
+                       delimiter=r'\t+|\s+',
+                       engine='python')
 
     def sum_contribs(start_index: int, label: str, n_contribs: int) -> pd.DataFrame:
         # initialize DataFrame and save Time to DataFrame
@@ -634,29 +642,23 @@ def read_forces(filepath: str) -> None:
 def main() -> None:
     # analyze .vtk files
     for vtk_file in find_files(VTK_FILE, exceptions=[CLOUD_FILE]):
-        print(f'\nProcessing {vtk_file}...')
         vtk2image(vtk_file)
 
     # analyze cloud files for lagrangian particle tracking
     for cloud_file in find_files(CLOUD_FILE):
-        print(f'\nProcessing {cloud_file}...')
         cloud2png(cloud_file)
     
     # analyze .dat and .xy files
     for res_file in find_files(RES_FILE):
-        print(f'\nProcessing {res_file}...')
         read_dat(res_file, semilogy=True, append_units=False)
 
     for dat_file in find_files(DAT_FILE, exceptions=[RES_FILE, WALL_SHEAR_FILE, FORCE_FILE]):
-        print(f'\nProcessing {dat_file}...')
         read_dat(dat_file)
     
     for xy_file in find_files(XY_FILE):
-        print(f'\nProcessing {xy_file}...')
         read_dat(xy_file)
 
     for force_file in find_files(FORCE_FILE):
-        print(f'\nProcessing {force_file}...')
         read_forces(force_file)
 
     sys.exit(0)
