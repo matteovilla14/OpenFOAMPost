@@ -6,6 +6,7 @@ Load and post-process OpenFOAM simulations. \\
 Maintainer: TheBusyDev <https://github.com/TheBusyDev/>
 '''
 import argparse
+from pathlib import Path
 
 
 
@@ -23,12 +24,20 @@ DEFAULT_N_COLORS = 256
 DEFAULT_WINDOW_SIZE = [1000, 500]
 DEFAULT_ZOOM = 1.75
 
-
+# argument parser
 parser = argparse.ArgumentParser(prog='ofpost',
                                  description='A powerful tool to to post-process OpenFOAM simulations.',
                                  allow_abbrev=False,
                                  formatter_class=argparse.RawTextHelpFormatter)
 
+# positional arguments
+parser.add_argument('paths',
+                    type=Path,
+                    nargs='+',
+                    metavar='PATHS',
+                    help='paths where post-processing files will be looked for recursively')
+
+# user custom options
 parser.add_argument('-b', '--background',
                     type=str,
                     metavar='COLOR',
@@ -85,8 +94,20 @@ parser.add_argument('-z', '--zoom',
                     required=False,
                     help=f"set camera zoom. Default: {DEFAULT_ZOOM}\n\n")
 
+# parse arguments
 args = parser.parse_args()
 
+# positional arguments
+PATHS = []
+
+# check if path actually exists and append them to PATHS
+for path in args.paths:
+    if not path.exists():
+        print(f'ERROR: {path} does not exist...')
+    else:
+        PATHS.append(path)
+
+# user custom options
 BACKGROUND = args.background
 IS_2D = (args.case == '2D')
 EXTENSION = args.format
@@ -129,12 +150,12 @@ if IS_INCOMP:
 if IS_STEADY:    
     UNITS_OF_MEASURE['Time'] = ''
 
-VTK_FILE = r'.*\.vtk'           # .vtk file
-CLOUD_FILE = r'cloud_.*\.vtk'
-RES_FILE = r'residuals\.dat'    # residuals file
-DAT_FILE = r'.*\.dat'           # .dat file
-XY_FILE = r'.*\.xy'             # .xy file
-FORCE_FILE = r'forces\.dat'     # forces.dat file
+VTK_FILE = '*.vtk'          # .vtk file
+CLOUD_FILE = 'cloud_*.vtk'
+RES_FILE = 'residuals.dat'  # residuals file
+DAT_FILE = '*.dat'          # .dat file
+XY_FILE = '*.xy'            # .xy file
+FORCE_FILE = 'forces.dat'   # forces.dat file
 
 
 

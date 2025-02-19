@@ -1,7 +1,6 @@
 '''
 LIBRARY FUNCTIONS.
 '''
-import os
 import re
 import traceback
 import numpy as np
@@ -9,7 +8,8 @@ import pandas as pd
 import pyvista as pv
 import matplotlib.pyplot as plt
 from io import StringIO
-from typing import Generator, Callable
+from pathlib import Path
+from typing import Any, Callable, Generator 
 
 
 # ------------------ IMPORT CONSTANTS ------------------
@@ -21,67 +21,64 @@ from ofpost import EXTENSION, UNITS_OF_MEASURE, COMPONENTS_EXT, MAGNITUDE_EXT, \
 
 
 # ------------------ FUNCTIONS ------------------
-def find_files(pattern: str, exceptions: list[str]=[]) -> Generator[str, None, None]:
+def find_files(pattern: str, path: Path, exceptions: list[str]=[]) -> Generator[Path, None, None]:
     '''
     Look for files based on specified pattern recursively. \\
-    'pattern' is treated as a regular expression. \\
-    'exceptions' is a list of regular expressions. \\
-    Return files location as generator. \\
+    In 'pattern', '*' matches any string. \\
+    'exceptions' is a list of patterns to be excluded. \\
+    Return filepaths as generator. \\
     Print error message if no file is found.
     '''
-    pattern = re.compile(pattern)
-    exceptions = [re.compile(exc) for exc in exceptions]
+    print(f'\nLooking for {pattern} files in {path.absolute()}...')
     is_found = False
-    print(f'\nLooking for {pattern.pattern} files...')
 
-    for root, _, files in os.walk('.', topdown=True):
+    # look for files that match 'pattern'
+    for root, _, files in path.walk(top_down=True):
         for file in files:
+            file = Path(file)
+
             # skip other files
-            if not pattern.fullmatch(file):
+            if not file.match(pattern, case_sensitive=False):
                 continue
 
             # skip exceptions
-            if any([exc.fullmatch(file) for exc in exceptions]):
+            if any([file.match(exc, case_sensitive=False) for exc in exceptions]):
                 continue
             
             # yield filepath
-            filepath = os.path.join(root, file)
+            filepath = root / file
             is_found = True
             yield filepath
 
     if not is_found:
-        print(f'No {pattern.pattern} file found.')
+        print(f'No {pattern} file found.')
 
 
 def read_file_decorator(read_file: Callable) -> Callable:
     '''
     Decorator to be applied to read-file functions.
     '''
-    def wrapper(filepath, **kwargs):
+    def wrapper(filepath: Path, **kwargs) -> Any:
         print(f'\nProcessing {filepath}...')
 
         try:
-            read_file(filepath, **kwargs)
+            return read_file(filepath, **kwargs)
         except Exception as e:
-            print(f'ERROR: unable to process {os.path.basename(filepath)}:')
+            print(f'ERROR: unable to process {filepath.name}:')
             traceback.print_exception(e)
     
     return wrapper
 
 
-def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, str, str]:
+def get_output_filepath(filepath: Path, filesuffix: str='') -> tuple[Path, str, str, str]:
     '''
     Return output filepath (with extension), input filename, timestep and output directory name. \\
     If 'filesuffix' is provided, then files will be generated with the specificed suffix.
     '''
     # get timestep and output path based on OpenFOAM convention
     # (under postProcessing folder)
-    filename = os.path.basename(filepath)
-    filename = filename.split('.')[0:-1] # remove file extension
-    filename = ''.join(filename)
-
-    path = os.path.dirname(filepath)
-    timestep = os.path.basename(path)
+    filename = filepath.stem # filename without extension
+    timestep = filepath.parent.name # get timestep from directory name
 
     try:
         float(timestep) # verify that timestep is really a float
@@ -89,8 +86,8 @@ def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, st
         timestep = '0'
 
     # create output file path
-    outpath = os.path.dirname(path) # output path
-    outdirname = os.path.basename(outpath) # output directory name
+    outpath = filepath.parent.parent # output path
+    outdirname = outpath.name # output directory name
     outfilename = filename # output filename
 
     if filesuffix != '':
@@ -105,7 +102,7 @@ def get_output_filepath(filepath: str, filesuffix: str='') -> tuple[str, str, st
         outfilename += '_' + timestep # add timestep to output filename
     
     outfilename += EXTENSION # add extension to output filename
-    outfilepath = os.path.join(outpath, outfilename) # output file path
+    outfilepath = outpath / outfilename # output file path
     print(f'Output file: {outfilepath}')
 
     return outfilepath, filename, timestep, outdirname
@@ -196,7 +193,7 @@ def adjust_camera(plotter: pv.Plotter) -> None:
 
 
 @read_file_decorator
-def vtk2image(filepath: str) -> None:
+def vtk2image(filepath: Path) -> None:
     '''
     Load .vtk file and convert it to image format as specified by the user.
     '''
@@ -289,7 +286,7 @@ def vtk2image(filepath: str) -> None:
     plotter.close() # close plotter
 
 
-def read_labels(filepath: str) -> list[str]:
+def read_labels(filepath: Path) -> list[str]:
     '''
     Get labels from file (i.e. the last comment line).
     '''
@@ -322,7 +319,7 @@ def read_labels(filepath: str) -> list[str]:
     return labels
 
 
-def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False, append_units: bool=True, filesuffix: str='') -> None:
+def plot_data(df: pd.DataFrame, filepath: Path, semilogy: bool=False, append_units: bool=True, filesuffix: str='') -> None:
     '''
     Plot data from .dat files and save figure. \\
     Receive pandas DataFrame and source filepath as input.
@@ -371,7 +368,7 @@ def plot_data(df: pd.DataFrame, filepath: str, semilogy: bool=False, append_unit
 
 
 @read_file_decorator
-def read_dat(filepath: str, semilogy: bool=False, append_units: bool=True) -> None:
+def read_dat(filepath: Path, semilogy: bool=False, append_units: bool=True) -> None:
     '''
     Read data from .dat files \\
     (for 'forces.dat' files, refer to 'read_forces' function).
@@ -396,9 +393,8 @@ def read_dat(filepath: str, semilogy: bool=False, append_units: bool=True) -> No
     time = data['Time'].drop_duplicates()
     time.reset_index(drop=True, inplace=True)
 
-    # define field name
-    field = os.path.basename(filepath)
-    field = field.removesuffix('.dat')
+    # define field name from filename (without extension)
+    field = filepath.stem
 
     # find columns
     target_columns = ['min', 'max', 'average']
@@ -441,7 +437,7 @@ def read_dat(filepath: str, semilogy: bool=False, append_units: bool=True) -> No
 
 
 @read_file_decorator
-def read_forces(filepath: str) -> None:
+def read_forces(filepath: Path) -> None:
     '''
     Read data from 'forces.dat' files and save plot.
     '''
