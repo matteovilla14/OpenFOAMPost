@@ -57,4 +57,13 @@ function ofpost-clean()
     done
 }
 
+function ofpost-build()
+{
+    # build a new version
+    version=$(cat "$OFPOST_PATH/VERSION.txt")
+    echo "Building version $version..."
+    echo
+    python -m build "$OFPOST_PATH"
+}
+
 return 0

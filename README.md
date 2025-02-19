@@ -37,7 +37,7 @@ pip install ofpost-1.0.0-py3-none-any.whl
 
 
 ## How to use
-This script will essentially look for .vtk, .dat, .xy files into the specified directories and convert them into .png format (other formats can be selected by the user).
+This script will essentially look for *.vtk*, *.dat*, *.xy* files into the specified directories and convert them into *.png* format (other formats can be selected by the user).
 
 ⚠️**IMPORTANT**: this script will look into the specified directories and their *subdirectories* **recursively**!! Be sure you selected the correct directory before launching it!
 
@@ -88,7 +88,7 @@ All the source files can be found in [/src/ofpost](/src/ofpost) directory! Enjoy
 ## How to build
 In order to build a new package, a new version can be specified in the [VERSION.txt](/VERSION.txt) file. Then, the package can be created by executing:
 ```
-python -m build
+ofpost-build
 ``` 
 
 
