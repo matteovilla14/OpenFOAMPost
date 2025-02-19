@@ -7,51 +7,53 @@ For this purpose, **OpenFOAMPost** can extract *colorful images* 🌈 from your 
 
 
 ## How to install
-The following instructions are well-tested on Linux-based systems 🐧.
+The following instructions are well-tested on Linux-based systems 🐧. \
+However, installation process is also reported for Windows and MacOS platforms. \
+Dependencies installation is specified for Linux only. MacOS and Windows users must find their way to install [pipx](https://pipx.pypa.io/stable/installation/) and/or [pip](https://pip.pypa.io/en/stable/installation/).
 
-### Dependencies
-Before starting, install all the dependencies:
+### Dependencies - Linux only (working also on WSL)
+Before starting, install all the dependencies (only procedure for Linux-based systems is reported):
 - **Ubuntu**
 ```
-sudo apt install wget python3-pip pipx
+sudo apt install curl python3-pip pipx
 ```
 - **Fedora**
 ```
-sudo dnf install wget python3-pip pipx
+sudo dnf install curl python3-pip pipx
 ```
 
-### Install package
+### Install package - Linux, MacOS, Windows
 You can install the wheel package through *pipx* (this is the suggested option) 🚀:
 ```
-wget https://github.com/TheBusyDev/OpenFOAMPost/releases/download/ofpost-stable/ofpost-1.0.0-py3-none-any.whl > /dev/null
+curl -OL https://github.com/TheBusyDev/OpenFOAMPost/releases/download/ofpost-stable/ofpost-1.0.0-py3-none-any.whl
 pipx install ofpost-1.0.0-py3-none-any.whl
 pipx ensurepath
 ```
 or, alternatively, through *pip* (not supported starting from Ubuntu 24.04):
 ```
-wget https://github.com/TheBusyDev/OpenFOAMPost/releases/download/ofpost-stable/ofpost-1.0.0-py3-none-any.whl > /dev/null
+curl -OL https://github.com/TheBusyDev/OpenFOAMPost/releases/download/ofpost-stable/ofpost-1.0.0-py3-none-any.whl
 pip install ofpost-1.0.0-py3-none-any.whl
 ```
 
 
 ## How to use
-This script will essentially look for .vtk, .dat, .xy files into the current directory and convert them into .png format (other formats can be selected by the user).
+This script will essentially look for .vtk, .dat, .xy files into the specified directories and convert them into .png format (other formats can be selected by the user).
 
-⚠️**IMPORTANT**: this script will look into the current directory and its *subdirectories* **recursively**!! Be sure you are in the correct directory before launching it!
+⚠️**IMPORTANT**: this script will look into the specified directories and their *subdirectories* **recursively**!! Be sure you selected the correct directory before launching it!
 
-**BASIC USAGE**: 
+### BASIC USAGE: 
 ```
-ofpost
+ofpost /path/to/OpenFOAM/simulation
 ```
 
-Other options can be specified by the user. All the input arguments can be listed as:
+Other options can be specified by the user. All the input arguments can be listed by:
 ```
 ofpost --help
 ```
 
 For instance, the user can post-process a 2D, steady-state, incompressible simulation by typing:
 ```
-ofpost --case 2D --steady yes --incomp yes
+ofpost /path/to/OpenFOAM/simulation --case 2D --steady yes --incomp yes
 ```
 
 
@@ -60,10 +62,10 @@ All sorts of contributions are well-welcomed 🤗! You can start by cloning the 
 ```
 git clone https://github.com/TheBusyDev/OpenFOAMPost.git
 ```
-Then, the necessary modules can be installed and the environment variables can be initialized by executing:
+Then, the necessary modules can be installed and the environment variables can be initialized by executing (a [virtual environment](https://docs.python.org/3/library/venv.html) is strongly suggested):
 ```
 cd OpenFOAMPost
-pip install requirements.txt
+pip install -r requirements.txt
 source init.sh
 ```
 
@@ -71,13 +73,13 @@ source init.sh
 
 Hence, by calling :
 ```
-ofpost
+ofpost-test
 ```
 the program will be launched into the [/test](/test) folder or its subdirectories!
 
 Moreover, the following command can be used to clean up the [/test](/test) folder:
 ```
-ofclean
+ofpost-clean
 ```
 
 All the source files can be found in [/src/ofpost](/src/ofpost) directory! Enjoy! 🤓
