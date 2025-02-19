@@ -114,8 +114,9 @@ PATHS = []
 for path in args.paths:
     if not path.exists():
         print(f'ERROR: {path} does not exist...')
+        sys.exit(1)
     else:
-        PATHS.append(path)
+        PATHS.append(path.absolute())
 
 # user custom options
 IS_2D = (args.case == '2D')
@@ -192,7 +193,7 @@ else:
         print()
         sys.exit(1)
 
-    # force to use user defined colormap
+    # force to use user-defined colormap
     DEFAULT_COLORMAP = args.cmap
     COLORMAPS = {}
     del matplotlib_cmaps

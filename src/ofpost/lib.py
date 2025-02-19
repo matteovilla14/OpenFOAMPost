@@ -29,8 +29,12 @@ def find_files(pattern: str, path: Path, exceptions: list[str]=[]) -> Generator[
     Return filepaths as generator. \\
     Print error message if no file is found.
     '''
-    print(f'\nLooking for {pattern} files in {path.absolute()}...')
+    print(f'\nLooking for {pattern} files in {path}...')
     is_found = False
+
+    # define global variable to specify working path
+    global working_path
+    working_path = path
 
     # look for files that match 'pattern'
     for root, _, files in path.walk(top_down=True):
@@ -103,7 +107,10 @@ def get_output_filepath(filepath: Path, filesuffix: str='') -> tuple[Path, str, 
     
     outfilename += EXTENSION # add extension to output filename
     outfilepath = outpath / outfilename # output file path
-    print(f'Output file: {outfilepath}')
+
+    # print output file path
+    global working_path
+    print(f'Output file: {outfilepath.relative_to(working_path)}')
 
     return outfilepath, filename, timestep, outdirname
 
