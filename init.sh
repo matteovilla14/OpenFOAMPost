@@ -23,36 +23,8 @@ export OFPOST_TEST="$ofpost_path/test"
 unset shell script_path ofpost_path
 
 # create custom functions
-function gototargetdir()
-{
-    # save current directory
-    old_pwd="$PWD"
-    
-    # go to test directory (or its subdirectories)
-    if [[ "$PWD" == "$OFPOST_TEST"* ]]
-    then
-        target_dir="$PWD"
-    else
-        target_dir="$OFPOST_TEST"
-    fi 
-
-    echo "Going to $target_dir directory..."
-    cd "$target_dir"
-}
-
-function gotooldpwd()
-{
-    # go back to "old_pwd"
-    cd "$old_pwd"
-    unset old_pwd
-}
-
 function ofpost()
 {
-    # run program in test directory
-    gototargetdir
-    echo
-
     # export PYTHONPATH
     old_pythonpath="$PYTHONPATH"
     export PYTHONPATH="$PYTHONPATH":"$OFPOST_PATH/src"
@@ -60,16 +32,20 @@ function ofpost()
     # run ofpost
     python3 -m ofpost "$@"
     
-    # restore pythonpath and go to "old_pwd"
+    # restore pythonpath
     export PYTHONPATH="$old_pythonpath"
-    gotooldpwd
 }
 
-function ofclean()
+function ofpost-test()
+{
+    # run test for ofpost
+    ofpost "$OFPOST_TEST" -c 2D
+}
+
+function ofpost-clean()
 {
     # clean up test directory
-    gototargetdir
-    echo "Cleaning up..."
+    echo "Cleaning up $OFPOST_TEST..."
     echo
 
     # delete files with certain extensions
@@ -77,10 +53,8 @@ function ofclean()
 
     for ext in ${exts[@]}
     do
-        find . -type f -name $ext -delete
+        find "$OFPOST_TEST" -type f -name $ext -delete
     done
-
-    gotooldpwd
 }
 
 return 0
