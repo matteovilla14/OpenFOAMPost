@@ -13,7 +13,7 @@ from typing import Generator, Callable
 
 
 # ------------------ IMPORT CONSTANTS ------------------
-from ofpost import EXTENSION, UNITS_OF_MEASURE, COMPONENTS, \
+from ofpost import EXTENSION, UNITS_OF_MEASURE, COMPONENTS_EXT, MAGNITUDE_EXT, \
                    CAMERA_ZOOM, COLORMAPS, DEFAULT_COLORMAP, \
                    PLOTTER_OPTIONS, SCALAR_BAR_ARGS, MESH_ARGS, \
                    IS_STEADY, FIGURE_ARGS, FORCE_LABEL, MOMENT_LABEL
@@ -137,7 +137,7 @@ def get_units(array_name: str) -> str:
             pass
 
     # remove extension from components
-    for comp in COMPONENTS:
+    for comp in COMPONENTS_EXT:
         if array_name.endswith(comp):
             array_name = array_name.removesuffix(comp)
             break
@@ -236,13 +236,13 @@ def vtk2image(filepath: str) -> None:
         # detect 3D arrays
         if array.shape[-1] == 3:
             # split arrays in their components 
-            for index, comp in enumerate(COMPONENTS):
+            for index, comp in enumerate(COMPONENTS_EXT):
                 new_name = array_name + comp + units
                 data[new_name] = array[:, index]
                 colormaps[new_name] = array_cmap # add entry to colormap for each component
 
             # rename array to indicate its magnitude
-            new_name = array_name + '_mag' + units
+            new_name = array_name + MAGNITUDE_EXT + units
         else:
             # add units of measurements to the array
             new_name = array_name + units
@@ -475,7 +475,7 @@ def read_forces(filepath: str) -> None:
 
         # sum contributions from pressure, viscosity and porosity
         indices = range(start_index, start_index+3)
-        labels = [label + comp for comp in COMPONENTS]
+        labels = [label + comp for comp in COMPONENTS_EXT]
 
         for index, label in zip(indices, labels):
             sum_axes = [index + 3*n for n in range(n_contribs)] # get axes to be summed
