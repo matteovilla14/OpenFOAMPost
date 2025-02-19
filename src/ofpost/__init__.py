@@ -52,6 +52,14 @@ parser.add_argument('-c', '--case',
                     required=False,
                     help="select case type. Default: 3D\n\n")
 
+parser.add_argument('--cmap',
+                    type=str,
+                    default=None,
+                    required=False,
+                    help=f"select colormap.\n"
+                          "If not specified, colormaps will be automatically selected.\n"
+                          "Refer to matplotlib website to choose the colormap properly\n\n")
+
 parser.add_argument('-f', '--format',
                     type=str,
                     choices=SUPPORTED_EXTENSIONS,
@@ -108,18 +116,14 @@ for path in args.paths:
         PATHS.append(path)
 
 # user custom options
-BACKGROUND = args.background
 IS_2D = (args.case == '2D')
-EXTENSION = args.format
 IS_INCOMP = (args.incomp == 'yes')
-N_COLORS = args.n_colors
 IS_STEADY = (args.steady == 'yes')
-WINDOW_SIZE = args.window_size
-CAMERA_ZOOM = args.zoom
 
 
 
 # ------------------ CONSTANTS ------------------
+EXTENSION = args.format # extension to be used to save files
 COMPONENTS_EXT = ['_x', '_y', '_z'] # all possible arrays components
 MAGNITUDE_EXT = '_mag' # magnitude extension
 
@@ -160,19 +164,24 @@ FORCE_FILE = 'forces.dat'   # forces.dat file
 
 
 # ------------------ PYVISTA OPTONS ------------------
-DEFAULT_COLORMAP = 'coolwarm'
+if args.cmap == None:
+    DEFAULT_COLORMAP = 'coolwarm'
 
-COLORMAPS = {
-    'p': 'coolwarm',
-    'U': 'turbo',
-    'T': 'inferno',
-    'Ma': 'turbo',
-    'C7H16': 'hot',
-    'H2': 'hot',
-    'O2': 'viridis',
-    'N2': 'winter',
-    'H2O': 'ocean'
-}
+    COLORMAPS = {
+        'p': 'coolwarm',
+        'U': 'turbo',
+        'T': 'inferno',
+        'Ma': 'turbo',
+        'C7H16': 'hot',
+        'H2': 'hot',
+        'O2': 'viridis',
+        'N2': 'winter',
+        'H2O': 'ocean'
+    }
+else:
+    # force to use user defined colormap
+    DEFAULT_COLORMAP = args.cmap
+    COLORMAPS = {}
 
 SCALAR_BAR_ARGS = {
     'vertical': False,
@@ -187,16 +196,18 @@ SCALAR_BAR_ARGS = {
 }
 
 MESH_ARGS = {
-    'n_colors': N_COLORS, # number of color levels for colormap
+    'n_colors': args.n_colors, # number of color levels for colormap
     # 'show_edges': True, # uncomment to show the underlying mesh
     # 'edge_color': [200]*3,
     # 'line_width': 2
 }
 
 PLOTTER_OPTIONS = {
-    'window_size': WINDOW_SIZE,
-    'background_color': BACKGROUND,
+    'window_size': args.window_size,
+    'background_color': args.background,
 }
+
+CAMERA_ZOOM = args.zoom
 
 
 
