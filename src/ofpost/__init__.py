@@ -5,8 +5,10 @@ Load and post-process OpenFOAM simulations. \\
 
 Maintainer: TheBusyDev <https://github.com/TheBusyDev/>
 '''
+import sys
 import argparse
 from pathlib import Path
+from matplotlib import colormaps
 
 
 
@@ -179,9 +181,21 @@ if args.cmap == None:
         'H2O': 'ocean'
     }
 else:
+    matplotlib_cmaps = colormaps()
+
+    # check if colormap is valid
+    if not args.cmap in matplotlib_cmaps:
+        print(f'ERROR: {args.cmap} is not a valid entry!\n'
+              'Here is a list of accepted colormaps:\n\n -> ',
+              end='')
+        print('\n -> '.join(matplotlib_cmaps))
+        print()
+        sys.exit(1)
+
     # force to use user defined colormap
     DEFAULT_COLORMAP = args.cmap
     COLORMAPS = {}
+    del matplotlib_cmaps
 
 SCALAR_BAR_ARGS = {
     'vertical': False,
