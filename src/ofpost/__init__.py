@@ -83,6 +83,13 @@ parser.add_argument('-n', '--n-colors',
                     required=False,
                     help=f"set number of colors used to display scalars. Default: {DEFAULT_N_COLORS}\n\n")
 
+parser.add_argument('--show-edges',
+                    type=str,
+                    choices=['yes', 'no'],
+                    default='no',
+                    required=False,
+                    help="show underlying mesh. Default: no\n\n")
+
 parser.add_argument('-s', '--steady',
                     type=str,
                     choices=['yes', 'no'],
@@ -212,9 +219,9 @@ SCALAR_BAR_ARGS = {
 
 MESH_ARGS = {
     'n_colors': args.n_colors, # number of color levels for colormap
-    # 'show_edges': True, # uncomment to show the underlying mesh
-    # 'edge_color': [200]*3,
-    # 'line_width': 2
+    'show_edges': (args.show_edges == 'yes'), # show the underlying mesh
+    'edge_color': [200]*3, # underlying mesh color
+    'line_width': 1 # underlying mesh line width
 }
 
 PLOTTER_OPTIONS = {
