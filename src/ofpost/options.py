@@ -18,11 +18,7 @@ SUPPORTED_EXTENSIONS = [
     '.pdf'
 ]
 
-COMPONENTS_EXT = ['_x', '_y', '_z'] # all possible arrays components
-MAGNITUDE_EXT = '_mag'              # magnitude extension
-
-FORCE_LABEL = 'F'
-MOMENT_LABEL = 'M'
+WORKING_PATH = Path.cwd()   # currently working path
 
 VTK_FILE = '*.vtk'          # .vtk file
 CLOUD_FILE = 'cloud_*.vtk'  # cloud file
@@ -31,11 +27,16 @@ DAT_FILE = '*.dat'          # .dat file
 XY_FILE = '*.xy'            # .xy file
 FORCE_FILE = 'forces.dat'   # forces.dat file
 
+COMPONENTS_EXT = ['_x', '_y', '_z'] # all possible arrays components
+MAGNITUDE_EXT = '_mag'              # magnitude extension
+
+FORCE_LABEL = 'F'
+MOMENT_LABEL = 'M'
+
 
 
 # ------------------ GENERIC OPTIONS ------------------
 paths = [] # list provided by the user of paths
-working_path = Path('.').absolute() # current working path
 
 is_2D = False       # for 2D simulations
 is_incomp = False   # for incompressible simulations

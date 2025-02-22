@@ -19,9 +19,6 @@ opt.parse_options()
 
 # look for files to be analyzed in each path
 for path in opt.paths:
-    # update working path
-    opt.working_path = path
-
     # analyze .vtk files
     for vtk_file in find_files(opt.VTK_FILE, path,
                                exceptions=[opt.CLOUD_FILE]):

@@ -26,7 +26,7 @@ def find_files(pattern: str, path: Path, exceptions: list[str]=[]) -> Generator[
     Return filepaths as generator. \\
     Print error message if no file is found.
     '''
-    print(f'\nLooking for {pattern} files in {path}...')
+    print(f'\nLooking for {pattern} files in {path} ...')
     is_found = False
 
     # look for files that match 'pattern'
@@ -56,7 +56,7 @@ def read_file_decorator(read_file: Callable) -> Callable:
     Decorator to be applied to read-file functions.
     '''
     def wrapper(filepath: Path, **kwargs) -> Any:
-        print(f'\nProcessing {filepath}...')
+        print(f'\nProcessing {filepath} ...')
 
         try:
             return read_file(filepath, **kwargs)
@@ -103,7 +103,7 @@ def get_output_filepath(filepath: Path, filesuffix: str='') -> tuple[Path, str, 
 
     # print output file path
     try:
-        print(f'Output file: {outfilepath.relative_to(opt.working_path)}')
+        print(f'Output file: {outfilepath.relative_to(opt.WORKING_PATH, walk_up=True)}')
     except ValueError:
         print(f'Output file: {outfilepath}')
 
