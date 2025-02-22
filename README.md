@@ -12,14 +12,9 @@ However, installation process is also reported for Windows and MacOS platforms. 
 Dependencies installation is specified for Linux only. MacOS and Windows users must find their way to install [pipx](https://pipx.pypa.io/stable/installation/) and/or [pip](https://pip.pypa.io/en/stable/installation/).
 
 ### Dependencies - Linux only (working also on WSL)
-Before starting, install all the dependencies (only procedure for Linux-based systems is reported):
-- **Ubuntu**
+Before starting, install all the dependencies (only procedure for *Ubuntu-based* systems is reported, find an equivalent for your specific Linux distro):
 ```
 sudo apt install curl python3-pip pipx
-```
-- **Fedora**
-```
-sudo dnf install curl python3-pip pipx
 ```
 
 ### Install package - Linux, MacOS, Windows
@@ -41,7 +36,7 @@ This script will essentially look for *.vtk*, *.dat*, *.xy* files into the speci
 
 ⚠️**IMPORTANT**: this script will look into the specified directories and their *subdirectories* **recursively**!! Be sure you selected the correct directory before launching it!
 
-### BASIC USAGE: 
+### Basic usage 
 ```
 ofpost /path/to/OpenFOAM/simulation
 ```
@@ -53,7 +48,7 @@ ofpost --help
 
 For instance, the user can post-process a 2D, steady-state, incompressible simulation by typing:
 ```
-ofpost /path/to/OpenFOAM/simulation --case 2D --steady yes --incomp yes
+ofpost /path/to/OpenFOAM/simulation --2D yes --steady yes --incomp yes
 ```
 
 
