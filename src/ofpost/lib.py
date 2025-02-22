@@ -12,11 +12,8 @@ from pathlib import Path
 from typing import Any, Callable, Generator 
 
 
-# ------------------ IMPORT CONSTANTS ------------------
-from ofpost import EXTENSION, UNITS_OF_MEASURE, COMPONENTS_EXT, MAGNITUDE_EXT, \
-                   CAMERA_ZOOM, COLORMAPS, DEFAULT_COLORMAP, \
-                   PLOTTER_OPTIONS, SCALAR_BAR_ARGS, MESH_ARGS, \
-                   IS_STEADY, FIGURE_ARGS, FORCE_LABEL, MOMENT_LABEL
+# ------------------ IMPORT OPTIONS ------------------
+import ofpost.options as opt
 
 
 
@@ -31,10 +28,6 @@ def find_files(pattern: str, path: Path, exceptions: list[str]=[]) -> Generator[
     '''
     print(f'\nLooking for {pattern} files in {path}...')
     is_found = False
-
-    # define global variable to specify working path
-    global working_path
-    working_path = path
 
     # look for files that match 'pattern'
     for root, _, files in path.walk(top_down=True):
@@ -105,12 +98,14 @@ def get_output_filepath(filepath: Path, filesuffix: str='') -> tuple[Path, str, 
     if timestep != '0':
         outfilename += '_' + timestep # add timestep to output filename
     
-    outfilename += EXTENSION # add extension to output filename
+    outfilename += opt.extension # add extension to output filename
     outfilepath = outpath / outfilename # output file path
 
     # print output file path
-    global working_path
-    print(f'Output file: {outfilepath.relative_to(working_path)}')
+    try:
+        print(f'Output file: {outfilepath.relative_to(opt.working_path)}')
+    except ValueError:
+        print(f'Output file: {outfilepath}')
 
     return outfilepath, filename, timestep, outdirname
 
@@ -122,7 +117,7 @@ def get_units(array_name: str) -> str:
     ''' 
     # detect units of measurement
     try:
-        units = ' [' + UNITS_OF_MEASURE[array_name] + ']'
+        units = ' [' + opt.units_of_measure[array_name] + ']'
         return units
     except KeyError:
         pass
@@ -135,20 +130,20 @@ def get_units(array_name: str) -> str:
 
         # try again to detect units of measurement
         try:
-            units = ' [' + UNITS_OF_MEASURE[array_name] + ']'
+            units = ' [' + opt.units_of_measure[array_name] + ']'
             return units
         except KeyError:
             pass
 
     # remove extension from components
-    for comp in COMPONENTS_EXT:
+    for comp in opt.COMPONENTS_EXT:
         if array_name.endswith(comp):
             array_name = array_name.removesuffix(comp)
             break
     
     # try again to detect units of measurement
     try:
-        units = ' [' + UNITS_OF_MEASURE[array_name] + ']'
+        units = ' [' + opt.units_of_measure[array_name] + ']'
     except KeyError:
         units = ''
 
@@ -196,7 +191,7 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     ]
 
     plotter.reset_camera() # camera is reset automatically based on mesh bounds
-    plotter.zoom_camera(CAMERA_ZOOM)
+    plotter.zoom_camera(opt.camera_zoom)
 
 
 @read_file_decorator
@@ -233,20 +228,20 @@ def vtk2image(filepath: Path) -> None:
 
         # detect array colormap
         try:
-            array_cmap = COLORMAPS[array_name]
+            array_cmap = opt.colormaps[array_name]
         except KeyError:
-            array_cmap = DEFAULT_COLORMAP
+            array_cmap = opt.default_colormap
         
         # detect 3D arrays
         if array.shape[-1] == 3:
             # split arrays in their components 
-            for index, comp in enumerate(COMPONENTS_EXT):
+            for index, comp in enumerate(opt.COMPONENTS_EXT):
                 new_name = array_name + comp + units
                 data[new_name] = array[:, index]
                 colormaps[new_name] = array_cmap # add entry to colormap for each component
 
             # rename array to indicate its magnitude
-            new_name = array_name + MAGNITUDE_EXT + units
+            new_name = array_name + opt.MAGNITUDE_EXT + units
         else:
             # add units of measurements to the array
             new_name = array_name + units
@@ -263,7 +258,7 @@ def vtk2image(filepath: Path) -> None:
     plotter.clear()
 
     # adjust plotter options
-    for key, value in PLOTTER_OPTIONS.items():
+    for key, value in opt.plotter_options.items():
         setattr(plotter, key, value)
 
     # loop around the modified arrays
@@ -272,8 +267,8 @@ def vtk2image(filepath: Path) -> None:
         plotter.add_mesh(mesh,
                          scalars=array_name,
                          cmap=colormaps[array_name],
-                         scalar_bar_args=SCALAR_BAR_ARGS,
-                         **MESH_ARGS)
+                         scalar_bar_args=opt.scalar_bar_args,
+                         **opt.mesh_args)
 
         # remove units from array name
         array_name = re.sub(r'\[.*?\]', '', array_name)
@@ -334,10 +329,10 @@ def plot_data(df: pd.DataFrame, filepath: Path, semilogy: bool=False, append_uni
     # create new plot
     x = df.iloc[:,0]
 
-    if IS_STEADY and x.name == 'Time':
+    if opt.is_steady and x.name == 'Time':
         x.name = 'Iterations'
 
-    fig = plt.figure(**FIGURE_ARGS)
+    fig = plt.figure(**opt.figure_args)
 
     # loop around DataFrame
     for label, y in df.iloc[:, 1:].items():
@@ -357,7 +352,7 @@ def plot_data(df: pd.DataFrame, filepath: Path, semilogy: bool=False, append_uni
     title = outdirname
 
     if timestep != '0':
-        title += '@' + timestep + UNITS_OF_MEASURE['Time'] # add timestep to plot title
+        title += '@' + timestep + opt.units_of_measure['Time'] # add timestep to plot title
         title += ' (' + filename + ')' # add filename info to plot title
 
     # set plot xlabel
@@ -478,7 +473,7 @@ def read_forces(filepath: Path) -> None:
 
         # sum contributions from pressure, viscosity and porosity
         indices = range(start_index, start_index+3)
-        labels = [label + comp for comp in COMPONENTS_EXT]
+        labels = [label + comp for comp in opt.COMPONENTS_EXT]
 
         for index, label in zip(indices, labels):
             sum_axes = [index + 3*n for n in range(n_contribs)] # get axes to be summed
@@ -488,10 +483,10 @@ def read_forces(filepath: Path) -> None:
 
     # get forces and save plot
     start_index = 1
-    forces = sum_contribs(start_index, FORCE_LABEL, n_contribs)
+    forces = sum_contribs(start_index, opt.FORCE_LABEL, n_contribs)
     plot_data(forces, filepath, filesuffix='forces')
 
     # get moments and save plot
     start_index = 1 + 3*n_contribs
-    moments = sum_contribs(start_index, MOMENT_LABEL, n_contribs)
+    moments = sum_contribs(start_index, opt.MOMENT_LABEL, n_contribs)
     plot_data(moments, filepath, filesuffix='moments')

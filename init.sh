@@ -39,7 +39,7 @@ function ofpost()
 function ofpost-test()
 {
     # run test for ofpost
-    ofpost "$OFPOST_TEST" -c 2D "$@"
+    ofpost "$OFPOST_TEST" --2D yes "$@"
 }
 
 function ofpost-clean()
