@@ -94,8 +94,8 @@ mesh_args = {
 }
 
 plotter_options = {
-    'window_size': [1000, 500],
     'background_color': 'white',
+    'window_size': [1000, 500]
 }
 
 camera_zoom = 1.75
@@ -110,7 +110,7 @@ figure_args = {
 
 
 
-# ------------------ PARSE CUSTOM USER OPTIONS ------------------
+# ------------------ PARSE USER CUSTOM OPTIONS ------------------
 def parse_options() -> None:
     '''
     Parse user input arguments and change default options.
@@ -232,12 +232,11 @@ def parse_options() -> None:
     # check if path actually exists and append them to 'paths'
     for path in args.paths:
         if not path.exists():
-            print(f'ERROR: {path} does not exist...')
+            print(f'ERROR: {path} directory does not exist...')
             sys.exit(1)
         else:
             paths.append(path.absolute())
 
-    # user custom options
     is_2D = yesno2bool(getattr(args, '2D'))
     is_incomp = yesno2bool(args.incomp)
     is_steady = yesno2bool(args.steady)
@@ -272,12 +271,8 @@ def parse_options() -> None:
         default_colormap = args.cmap
         colormaps = {}
 
-    mesh_args = {
-        'n_colors': args.n_colors, # number of color levels for colormap
-        'show_edges': yesno2bool(args.show_edges), # show the underlying mesh
-        'edge_color': [200]*3, # underlying mesh color
-        'line_width': 1 # underlying mesh line width
-    }
+    mesh_args['n_colors'] = args.n_colors
+    mesh_args['show_edges'] = yesno2bool(args.show_edges)
 
     # check if background color is a valid entry
     if not is_color_like(args.background):
@@ -288,9 +283,7 @@ def parse_options() -> None:
         print()
         sys.exit(1)
     
-    plotter_options = {
-        'window_size': args.window_size,
-        'background_color': args.background,
-    }
+    plotter_options['background_color'] = args.background
+    plotter_options['window_size'] = args.window_size
 
     camera_zoom = args.zoom
