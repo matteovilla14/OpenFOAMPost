@@ -26,7 +26,7 @@ for pycache_dir in pycache_dirs:
 
 setup(
     # general properties
-    name='ofpost', 
+    name='OpenFOAMPost', 
     version=VERSION, 
     description='A powerful tool to to post-process OpenFOAM simulations.', 
     url='https://github.com/TheBusyDev/OpenFOAMPost',
