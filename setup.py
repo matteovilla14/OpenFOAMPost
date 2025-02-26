@@ -14,8 +14,12 @@ PYTHON_REQUIRES = ">= 3.10, < 4"
 with open('VERSION.txt', 'r') as file:
     VERSION = file.read()
 
-# define license file
-LICENSE = 'LICENSE.txt'
+# get project description
+with open('README.md', 'r') as file:
+    README = file.read()
+
+# define license
+LICENSE = 'MIT'
 
 # remove __pycache__ directories
 pycache_dirs = glob.glob('**/__pycache__', recursive=True)
@@ -29,6 +33,8 @@ setup(
     name='OpenFOAMPost', 
     version=VERSION, 
     description='A powerful tool to to post-process OpenFOAM simulations.', 
+    long_description=README,
+    long_description_content_type='text/markdown',
     url='https://github.com/TheBusyDev/OpenFOAMPost',
     author='TheBusyDev', 
     author_email='pietro.busy@gmail.com',
