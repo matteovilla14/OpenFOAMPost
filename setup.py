@@ -29,7 +29,7 @@ setup(
     name='ofpost', 
     version=VERSION, 
     description='A powerful tool to to post-process OpenFOAM simulations.', 
-    url='github.com/TheBusyDev/OpenFOAMPost',
+    url='https://github.com/TheBusyDev/OpenFOAMPost',
     author='TheBusyDev', 
     author_email='pietro.busy@gmail.com',
     license=LICENSE,
