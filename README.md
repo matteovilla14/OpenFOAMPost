@@ -1,4 +1,4 @@
-# OpenFOAMPost
+# OpenFOAMPost - OpenFOAM Post-Processing Utility
 A powerful tool to post-process **OpenFOAM** simulations (written in *Python* 🐍). \
 Are you fed up with processing OpenFOAM simulations using *ParaView*? \
 Yeah, OpenFOAM *function objects* are awesome🌟, however processing .vtk manually can be very boring👎.
@@ -14,20 +14,18 @@ Dependencies installation is specified for Linux only. MacOS and Windows users m
 ### Dependencies - Linux only (working also on WSL)
 Before starting, install all the dependencies (only procedure for *Ubuntu-based* systems is reported, find an equivalent for your specific Linux distro):
 ```
-sudo apt install curl python3-pip pipx
+sudo apt install python3-pip pipx
 ```
 
 ### Install package - Linux, MacOS, Windows
 You can install the wheel package through *pipx* (this is the suggested option) 🚀:
 ```
-curl -OL https://github.com/TheBusyDev/OpenFOAMPost/releases/download/ofpost-stable/ofpost-1.0.0-py3-none-any.whl
-pipx install ofpost-1.0.0-py3-none-any.whl
 pipx ensurepath
+pipx install ofpost
 ```
 or, alternatively, through *pip* (not supported starting from Ubuntu 24.04):
 ```
-curl -OL https://github.com/TheBusyDev/OpenFOAMPost/releases/download/ofpost-stable/ofpost-1.0.0-py3-none-any.whl
-pip install ofpost-1.0.0-py3-none-any.whl
+pip install ofpost
 ```
 
 
