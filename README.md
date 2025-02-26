@@ -21,11 +21,11 @@ sudo apt install python3-pip pipx
 You can install the wheel package through *pipx* (this is the suggested option) 🚀:
 ```
 pipx ensurepath
-pipx install ofpost
+pipx install openfoampost
 ```
 or, alternatively, through *pip* (not supported starting from Ubuntu 24.04):
 ```
-pip install ofpost
+pip install openfoampost
 ```
 
 
