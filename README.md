@@ -44,9 +44,9 @@ Other options can be specified by the user. All the input arguments can be liste
 ofpost --help
 ```
 
-For instance, the user can post-process a 2D, steady-state, incompressible simulation by typing:
+For example, the user can post-process a 2D, steady-state, incompressible simulation in the current working directory by typing:
 ```
-ofpost /path/to/OpenFOAM/simulation --2D yes --steady yes --incomp yes
+ofpost . --2D yes --steady yes --incomp yes
 ```
 
 

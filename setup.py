@@ -49,5 +49,10 @@ setup(
     install_requires=INSTALL_REQUIRES,
 
     # add entry point to run script in command line
-    entry_points={'console_scripts': 'ofpost=ofpost:__main__'}
+    entry_points={
+        'console_scripts': [
+            'ofpost = ofpost:__main__',
+            'openfoampost = ofpost:__main__'
+        ]
+    }
 )
