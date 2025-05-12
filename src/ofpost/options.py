@@ -170,12 +170,12 @@ def parse_options() -> None:
     parser.add_argument( '--cmap-min', 
                         type=float, 
                         default=None, 
-                        help='Valore minimo della colormap per la visualizzazione (default: automatico)')
+                        help='Minimum colormap value (default: automatic)')
     
     parser.add_argument( '--cmap-max', 
                         type=float, 
                         default=None, 
-                        help='Valore massimo della colormap per la visualizzazione (default: automatico)')
+                        help='Maximum colormap value (default: automatic)')
 
     parser.add_argument('-f', '--format',
                         type=str,
