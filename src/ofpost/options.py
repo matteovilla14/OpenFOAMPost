@@ -167,6 +167,16 @@ def parse_options() -> None:
                              "If not specified, colormaps will be automatically selected.\n"
                              "Refer to matplotlib website to choose the colormap properly.\n\n")
 
+    parser.add_argument( '--cmap-min', 
+                        type=float, 
+                        default=None, 
+                        help='Valore minimo della colormap per la visualizzazione (default: automatico)')
+    
+    parser.add_argument( '--cmap-max', 
+                        type=float, 
+                        default=None, 
+                        help='Valore massimo della colormap per la visualizzazione (default: automatico)')
+
     parser.add_argument('-f', '--format',
                         type=str,
                         choices=SUPPORTED_EXTENSIONS,
