@@ -151,9 +151,10 @@ def get_units(array_name: str) -> str:
 
 def adjust_camera(plotter: pv.Plotter) -> None:
     '''
-    Try to infer slice normal direction and adjust plotter camera position. \\
+    Try to infer slice normal direction and adjust camera position. \\
     If normal direction is not computed correctly \\
-    or slice is not aligned with x, y or z direction, then just reset camera.
+    (or it is not aligned with x, y or z direction), \\
+    then just reset camera position and set user-defined zoom and focal point.
     '''
     mesh = plotter.mesh
 
@@ -171,7 +172,7 @@ def adjust_camera(plotter: pv.Plotter) -> None:
             plotter.set_focus(opt.camera_options['focal_point'])
 
         return
-    
+
     # generate normal vector
     normal = np.zeros(3)
     normal[normal_idx] = opt.camera_options['normal']
