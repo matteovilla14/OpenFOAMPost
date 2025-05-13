@@ -232,9 +232,6 @@ def vtk2image(filepath: Path) -> None:
         except KeyError:
             array_cmap = opt.default_colormap
 
-        if --cmap-min is not None or --cmap-max is not None:
-            array_cmap.set_clim(vmin=cmap_min, vmax=cmap_max)
-        
         # detect 3D arrays
         if array.shape[-1] == 3:
             # split arrays in their components 
