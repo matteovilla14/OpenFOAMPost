@@ -8,7 +8,7 @@ from matplotlib import colormaps as mat_colormaps
 from matplotlib.colors import is_color_like, CSS4_COLORS
 
 
-class Options:
+class opt:
     # ------------------ CONSTANTS ------------------
     SUPPORTED_EXTENSIONS = [
         '.png',
@@ -34,7 +34,6 @@ class Options:
     MOMENT_LABEL = 'M'
 
 
-
     # ------------------ GENERIC OPTIONS ------------------
     paths = [] # list provided by the user of paths
 
@@ -57,7 +56,6 @@ class Options:
         'delta': 'm', # film thickness
         'Time': 's' # time
     }
-
 
 
     # ------------------ PYVISTA OPTONS ------------------
@@ -103,7 +101,6 @@ class Options:
     camera_zoom = 1.75
 
 
-
     # ------------------ MATPLOTLIB OPTIONS ------------------
     figure_args = {
         # 'figsize': [8, 6],
@@ -112,9 +109,10 @@ class Options:
 
 
     # ------------------ PARSE USER CUSTOM OPTIONS ------------------
-    def parse_options(self) -> None:
+    @staticmethod
+    def parse_arguments() -> None:
         '''
-        Parse user input arguments and change default options.
+        Static method to parse user input arguments and change default options.
         '''
         yesno_choices = ['yes', 'no']
 
@@ -138,7 +136,7 @@ class Options:
                             help='Paths where post-processing files will be looked for recursively')
 
         # user custom options
-        default_2D = bool2yesno(self.is_2D)
+        default_2D = bool2yesno(opt.is_2D)
 
         parser.add_argument('--2D',
                             type=str,
@@ -147,7 +145,7 @@ class Options:
                             required=False,
                             help=f"Select case type. Default: {default_2D}\n\n")
         
-        default_background = self.plotter_options['background_color']
+        default_background = opt.plotter_options['background_color']
         
         parser.add_argument('-b', '--background',
                             type=str,
@@ -156,7 +154,7 @@ class Options:
                             required=False,
                             help=f"Select background color. Default: {default_background}\n\n")
 
-        default_clim = self.mesh_args['clim']
+        default_clim = opt.mesh_args['clim']
 
         parser.add_argument('--clim', 
                             type=float, 
@@ -177,12 +175,12 @@ class Options:
 
         parser.add_argument('-f', '--format',
                             type=str,
-                            choices=self.SUPPORTED_EXTENSIONS,
-                            default=self.extension,
+                            choices=opt.SUPPORTED_EXTENSIONS,
+                            default=opt.extension,
                             required=False,
-                            help=f"Select file format. Default: {self.extension}\n\n")
+                            help=f"Select file format. Default: {opt.extension}\n\n")
 
-        default_incomp = bool2yesno(self.is_incomp)
+        default_incomp = bool2yesno(opt.is_incomp)
 
         parser.add_argument('-i', '--incomp',
                             type=str,
@@ -191,7 +189,7 @@ class Options:
                             required=False,
                             help=f"Set incompressible case. Default: {default_incomp}\n\n")
         
-        default_n_colors = self.mesh_args['n_colors']
+        default_n_colors = opt.mesh_args['n_colors']
 
         parser.add_argument('-n', '--n-colors',
                             type=int,
@@ -200,7 +198,7 @@ class Options:
                             required=False,
                             help=f"Set number of colors used to display scalars. Default: {default_n_colors}\n\n")
         
-        default_show_edges = bool2yesno(self.mesh_args['show_edges'])
+        default_show_edges = bool2yesno(opt.mesh_args['show_edges'])
 
         parser.add_argument('--show-edges',
                             type=str,
@@ -209,7 +207,7 @@ class Options:
                             required=False,
                             help=f"Show underlying mesh. Default: {default_show_edges}\n\n")
         
-        default_steady = bool2yesno(self.is_steady)
+        default_steady = bool2yesno(opt.is_steady)
 
         parser.add_argument('-s', '--steady',
                             type=str,
@@ -218,7 +216,7 @@ class Options:
                             required=False,
                             help=f"Set steady-state case. Default: {default_steady}\n\n")
         
-        default_window_size = self.plotter_options['window_size']
+        default_window_size = opt.plotter_options['window_size']
 
         parser.add_argument('-w', '--window-size',
                             type=int,
@@ -230,9 +228,9 @@ class Options:
 
         parser.add_argument('-z', '--zoom',
                             type=float,
-                            default=self.camera_zoom,
+                            default=opt.camera_zoom,
                             required=False,
-                            help=f"Set camera zoom. Default: {self.camera_zoom}\n\n")
+                            help=f"Set camera zoom. Default: {opt.camera_zoom}\n\n")
 
         # parse arguments
         args = parser.parse_args()
@@ -244,24 +242,24 @@ class Options:
                 print(f'ERROR: {path} directory does not exist...')
                 sys.exit(1)
             else:
-                self.paths.append(path.absolute())
+                opt.paths.append(path.absolute())
 
-        self.is_2D = yesno2bool(getattr(args, '2D'))
-        self.is_incomp = yesno2bool(args.incomp)
-        self.is_steady = yesno2bool(args.steady)
+        opt.is_2D = yesno2bool(getattr(args, '2D'))
+        opt.is_incomp = yesno2bool(args.incomp)
+        opt.is_steady = yesno2bool(args.steady)
 
         # ------------------ generic options ------------------
-        if self.is_2D:
-            self.units_of_measure['F'] = 'N/m'
-            self.units_of_measure['M'] = 'N*m/m'
+        if opt.is_2D:
+            opt.units_of_measure['F'] = 'N/m'
+            opt.units_of_measure['M'] = 'N*m/m'
 
-        if self.is_incomp:
-            self.units_of_measure['p'] = 'm^2/s^2' # kinematic pressure is used in incompressible simulations
+        if opt.is_incomp:
+            opt.units_of_measure['p'] = 'm^2/s^2' # kinematic pressure is used in incompressible simulations
 
-        if self.is_steady:    
-            self.units_of_measure['Time'] = ''
+        if opt.is_steady:    
+            opt.units_of_measure['Time'] = ''
 
-        self.extension = args.format # extension to be used to save files
+        opt.extension = args.format # extension to be used to save files
 
         # ------------------ pyvista optons ------------------
         if args.cmap != None:
@@ -277,12 +275,12 @@ class Options:
                 sys.exit(1)
 
             # force to use user-defined colormap
-            self.default_colormap = args.cmap
-            self.colormaps = {}
+            opt.default_colormap = args.cmap
+            opt.colormaps = {}
 
-        self.mesh_args['clim'] = args.clim
-        self.mesh_args['n_colors'] = args.n_colors
-        self.mesh_args['show_edges'] = yesno2bool(args.show_edges)
+        opt.mesh_args['clim'] = args.clim
+        opt.mesh_args['n_colors'] = args.n_colors
+        opt.mesh_args['show_edges'] = yesno2bool(args.show_edges)
 
         # check if background color is a valid entry
         if not is_color_like(args.background):
@@ -293,11 +291,7 @@ class Options:
             print()
             sys.exit(1)
         
-        self.plotter_options['background_color'] = args.background
-        self.plotter_options['window_size'] = args.window_size
+        opt.plotter_options['background_color'] = args.background
+        opt.plotter_options['window_size'] = args.window_size
 
-        self.camera_zoom = args.zoom
-
-
-# ------------------ INSTANTATION OF OPTIONS CLASS ------------------
-opt = Options()
+        opt.camera_zoom = args.zoom

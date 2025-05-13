@@ -12,10 +12,9 @@ from ofpost.options import opt
 from ofpost.lib import find_files, vtk2image, read_dat, read_forces
 
 
-
 # ------------------ MAIN PROGRAM ------------------
-# parse user custom options
-opt.parse_options()
+# parse input arguments
+opt.parse_arguments()
 
 # look for files to be analyzed in each path
 for path in opt.paths:

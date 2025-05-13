@@ -16,7 +16,6 @@ from typing import Any, Callable, Generator
 from ofpost.options import opt
 
 
-
 # ------------------ FUNCTIONS ------------------
 def find_files(pattern: str, path: Path, exceptions: list[str]=[]) -> Generator[Path, None, None]:
     '''
