@@ -159,38 +159,55 @@ def adjust_camera(plotter: pv.Plotter) -> None:
 
     # try to infer slice normal direction (slice has zero thickness in normal direction)
     bounds = np.array(mesh.bounds)
-    delta_bounds = np.abs(bounds[1::2] -  bounds[0:-1:2])
-    normal_idx, = np.where(delta_bounds < 1e-16) # get zero-thickness direction
-    
+    delta_bounds = np.abs(bounds[1::2] - bounds[0:-1:2])
+    normal_idx, = np.where(delta_bounds / np.linalg.norm(delta_bounds) < 1e-14) # get zero-thickness direction
+
     # return if normal is not found correctly
     if len(normal_idx) != 1:
         plotter.reset_camera()
+        plotter.zoom_camera(opt.camera_options['zoom'])
+
+        if opt.camera_options['focal_point'] != None:
+            plotter.set_focus(opt.camera_options['focal_point'])
+
         return
     
     # generate normal vector
     normal = np.zeros(3)
-    normal[normal_idx] = 1
+    normal[normal_idx] = opt.camera_options['normal']
 
-    # set up the camera position and focal point
-    camera_position = mesh.center + normal
-    focal_point = mesh.center
+    # set up focal point and camera position
+    if opt.camera_options['focal_point'] != None:
+        focal_point = opt.camera_options['focal_point']
+    else:
+        focal_point = mesh.center
+
+    position = focal_point + normal
 
     # compute camera view-up orientation
     delta_bounds[normal_idx] = np.inf # needed to avoid the normal direction as view-up direction
-    min_bound = np.min(delta_bounds)
-    min_indices, = np.where(delta_bounds == min_bound)
-    view_up_idx = min_indices[-1] # get view-up direction
+    view_up_idx = np.argmin(delta_bounds)
     view_up = np.zeros(3)
-    view_up[view_up_idx] = 1 if view_up_idx != 2 else -1
+    view_up[view_up_idx] = opt.camera_options['view_up']
 
     plotter.camera_position = [
-        camera_position,
+        position,
         focal_point,
         view_up
     ]
 
-    plotter.reset_camera() # camera is reset automatically based on mesh bounds
-    plotter.zoom_camera(opt.camera_zoom)
+    # get mesh heigh and width and compute window aspect ratio
+    height = delta_bounds[view_up_idx]
+    delta_bounds[view_up_idx] = np.inf
+    width = np.min(delta_bounds)
+    window_size = opt.plotter_options['window_size']
+    aspect_ratio = window_size[0] / window_size[1]
+
+    # compute and set camera parallel scale
+    plotter.enable_parallel_projection()
+    parallel_scale = max(height / 2, width / (2 * aspect_ratio))
+    parallel_scale *= opt.camera_options['zoom']
+    plotter.parallel_scale = parallel_scale
 
 
 @read_file_decorator

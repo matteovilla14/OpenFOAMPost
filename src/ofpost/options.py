@@ -98,7 +98,12 @@ class opt:
         'window_size': [1000, 500]
     }
 
-    camera_zoom = 1.75
+    camera_options = {
+        'normal': +1,
+        'view_up': +1,
+        'focal_point': None,
+        'zoom': 1.1
+    }
 
 
     # ------------------ MATPLOTLIB OPTIONS ------------------
@@ -173,6 +178,35 @@ class opt:
                                  "If not specified, colormaps will be automatically selected.\n"
                                  "Refer to matplotlib website to choose the colormap properly.\n\n")
 
+        default_flip_normal = bool2yesno(opt.camera_options['normal'] == -1)
+
+        parser.add_argument('--flip-normal',
+                            type=str,
+                            choices=yesno_choices,
+                            default=default_flip_normal,
+                            required=False,
+                            help=f"Flip normal direction when plotting slices. Default: {default_flip_normal}\n\n")
+
+        default_flip_view_up = bool2yesno(opt.camera_options['view_up'] == -1)
+
+        parser.add_argument('--flip-view-up',
+                            type=str,
+                            choices=yesno_choices,
+                            default=default_flip_view_up,
+                            required=False,
+                            help=f"Flip view-up direction when plotting slices. Default: {default_flip_view_up}\n\n")
+
+        default_focal_point = opt.camera_options['focal_point']
+
+        parser.add_argument('--focal-point',
+                            type=float,
+                            nargs=3,
+                            metavar=('X', 'Y', 'Z'),
+                            default=default_focal_point,
+                            required=False,
+                            help="Set focal point when plotting slices.\n"
+                                 "Default: take focal point at the middle of the mesh\n\n")
+
         parser.add_argument('-f', '--format',
                             type=str,
                             choices=opt.SUPPORTED_EXTENSIONS,
@@ -226,11 +260,13 @@ class opt:
                             required=False,
                             help=f"Set window size. Default: {default_window_size[0]} {default_window_size[1]} \n\n")
 
+        default_zoom = opt.camera_options['zoom']
+
         parser.add_argument('-z', '--zoom',
                             type=float,
-                            default=opt.camera_zoom,
+                            default=default_zoom,
                             required=False,
-                            help=f"Set camera zoom. Default: {opt.camera_zoom}\n\n")
+                            help=f"Set camera zoom. Default: {default_zoom}\n\n")
 
         # parse arguments
         args = parser.parse_args()
@@ -256,7 +292,7 @@ class opt:
         if opt.is_incomp:
             opt.units_of_measure['p'] = 'm^2/s^2' # kinematic pressure is used in incompressible simulations
 
-        if opt.is_steady:    
+        if opt.is_steady:
             opt.units_of_measure['Time'] = ''
 
         opt.extension = args.format # extension to be used to save files
@@ -294,4 +330,15 @@ class opt:
         opt.plotter_options['background_color'] = args.background
         opt.plotter_options['window_size'] = args.window_size
 
-        opt.camera_zoom = args.zoom
+        if not yesno2bool(args.flip_normal):
+            opt.camera_options['normal'] = +1
+        else:
+            opt.camera_options['normal'] = -1
+
+        if not yesno2bool(args.flip_view_up):
+            opt.camera_options['view_up'] = +1
+        else:
+            opt.camera_options['view_up'] = -1
+
+        opt.camera_options['focal_point'] = args.focal_point
+        opt.camera_options['zoom'] = args.zoom
