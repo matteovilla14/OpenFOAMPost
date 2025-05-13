@@ -13,7 +13,7 @@ from typing import Any, Callable, Generator
 
 
 # ------------------ IMPORT OPTIONS ------------------
-import ofpost.options as opt
+from ofpost.options import opt
 
 
 

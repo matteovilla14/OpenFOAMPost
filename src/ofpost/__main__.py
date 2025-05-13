@@ -5,7 +5,7 @@ import sys
 
 
 # ------------------ IMPORT OPTIONS ------------------
-import ofpost.options as opt
+from ofpost.options import opt
 
 
 # ------------------ IMPORT FUNCTIONS ------------------
