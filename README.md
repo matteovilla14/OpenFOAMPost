@@ -5,6 +5,9 @@ Yeah, OpenFOAM *function objects* are awesome🌟, however processing .vtk manua
 
 For this purpose, **OpenFOAMPost** can extract *colorful images* 🌈 from your simulations!!
 
+**⚠️WARNING:** If you are just a user, it is sufficient that you take a look at [install](#how-to-install) and [usage](#how-to-use) sections (you can find also an [example](#examples) section below). \
+For code contributions, refer to [contribute](#how-to-contribute) and [build](#how-to-build) sections! Enjoy! 🤗
+
 
 ## How to install
 The following instructions are well-tested on Linux-based systems 🐧. \
@@ -26,6 +29,17 @@ pipx install openfoampost
 or, alternatively, through *pip* (not supported starting from Ubuntu 24.04):
 ```
 pip install openfoampost
+```
+
+
+### Upgrade package
+When a new version is released, the package can be upgrade, preferably through *pipx*:
+```
+pipx upgrade openfoampost
+```
+or, alternatively, through *pip*:
+```
+pip install --upgrade openfoampost
 ```
 
 
@@ -68,14 +82,14 @@ Hence, by calling :
 ```
 ofpost-test
 ```
-the program will be launched into the [/test](/test) folder or its subdirectories!
+the program will be launched into the [/test](/test) folder!
 
 Moreover, the following command can be used to clean up the [/test](/test) folder:
 ```
 ofpost-clean
 ```
 
-All the source files can be found in [/src/ofpost](/src/ofpost) directory! Enjoy! 🤓
+All the source files can be found in [/src/ofpost](/src/ofpost) directory! Enjoy coding! 🤓
 
 
 ## How to build
