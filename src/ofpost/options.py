@@ -88,6 +88,7 @@ scalar_bar_args = {
 }
 
 mesh_args = {
+    'clim': None,           # range values to show the colormap
     'n_colors': 256,        # number of color levels for colormap
     'show_edges': False,    # show the underlying mesh
     'edge_color': [200]*3,  # underlying mesh color
@@ -138,7 +139,7 @@ def parse_options() -> None:
                         type=Path,
                         nargs='+',
                         metavar='PATHS',
-                        help='paths where post-processing files will be looked for recursively')
+                        help='Paths where post-processing files will be looked for recursively')
 
     # user custom options
     default_2D = bool2yesno(is_2D)
@@ -148,7 +149,7 @@ def parse_options() -> None:
                         choices=yesno_choices,
                         default=default_2D,
                         required=False,
-                        help=f"select case type. Default: {default_2D}\n\n")
+                        help=f"Select case type. Default: {default_2D}\n\n")
     
     default_background = plotter_options['background_color']
     
@@ -157,13 +158,22 @@ def parse_options() -> None:
                         metavar='COLOR',
                         default=default_background,
                         required=False,
-                        help=f"select background color. Default: {default_background}\n\n")
+                        help=f"Select background color. Default: {default_background}\n\n")
+    
+    parser.add_argument('--clim', 
+                        type=float, 
+                        nargs=2,
+                        metavar=('VMIN', 'VMAX'),
+                        default=mesh_args['clim'], 
+                        required=False,
+                        help="Colormap range, with minimum and maximum values.\n"
+                             "Default: adaptive selection, based on the plotted quantity.\n\n")
 
     parser.add_argument('--cmap',
                         type=str,
                         default=None,
                         required=False,
-                        help=f"select colormap.\n"
+                        help=f"Select colormap.\n"
                              "If not specified, colormaps will be automatically selected.\n"
                              "Refer to matplotlib website to choose the colormap properly.\n\n")
 
@@ -172,8 +182,8 @@ def parse_options() -> None:
                         choices=SUPPORTED_EXTENSIONS,
                         default=extension,
                         required=False,
-                        help=f"select file format. Default: {extension}\n\n")
-    
+                        help=f"Select file format. Default: {extension}\n\n")
+
     default_incomp = bool2yesno(is_incomp)
 
     parser.add_argument('-i', '--incomp',
@@ -181,7 +191,7 @@ def parse_options() -> None:
                         choices=yesno_choices,
                         default=default_incomp,
                         required=False,
-                        help=f"set incompressible case. Default: {default_incomp}\n\n")
+                        help=f"Set incompressible case. Default: {default_incomp}\n\n")
     
     default_n_colors = mesh_args['n_colors']
 
@@ -190,7 +200,7 @@ def parse_options() -> None:
                         metavar='N',
                         default=default_n_colors,
                         required=False,
-                        help=f"set number of colors used to display scalars. Default: {default_n_colors}\n\n")
+                        help=f"Set number of colors used to display scalars. Default: {default_n_colors}\n\n")
     
     default_show_edges = bool2yesno(mesh_args['show_edges'])
 
@@ -199,7 +209,7 @@ def parse_options() -> None:
                         choices=yesno_choices,
                         default=default_show_edges,
                         required=False,
-                        help=f"show underlying mesh. Default: {default_show_edges}\n\n")
+                        help=f"Show underlying mesh. Default: {default_show_edges}\n\n")
     
     default_steady = bool2yesno(is_steady)
 
@@ -208,7 +218,7 @@ def parse_options() -> None:
                         choices=yesno_choices,
                         default=default_steady,
                         required=False,
-                        help=f"set steady-state case. Default: {default_steady}\n\n")
+                        help=f"Set steady-state case. Default: {default_steady}\n\n")
     
     default_window_size = plotter_options['window_size']
 
@@ -218,13 +228,13 @@ def parse_options() -> None:
                         metavar=('WIDTH', 'HEIGHT'),
                         default=default_window_size,
                         required=False,
-                        help=f"set window size. Default: {default_window_size[0]} {default_window_size[1]} \n\n")
+                        help=f"Set window size. Default: {default_window_size[0]} {default_window_size[1]} \n\n")
 
     parser.add_argument('-z', '--zoom',
                         type=float,
                         default=camera_zoom,
                         required=False,
-                        help=f"set camera zoom. Default: {camera_zoom}\n\n")
+                        help=f"Set camera zoom. Default: {camera_zoom}\n\n")
 
     # parse arguments
     args = parser.parse_args()
@@ -272,6 +282,7 @@ def parse_options() -> None:
         default_colormap = args.cmap
         colormaps = {}
 
+    mesh_args['clim'] = args.clim
     mesh_args['n_colors'] = args.n_colors
     mesh_args['show_edges'] = yesno2bool(args.show_edges)
 
