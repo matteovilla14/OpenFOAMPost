@@ -88,6 +88,7 @@ scalar_bar_args = {
 }
 
 mesh_args = {
+    'clim': None,           # range values to show the colormap
     'n_colors': 256,        # number of color levels for colormap
     'show_edges': False,    # show the underlying mesh
     'edge_color': [200]*3,  # underlying mesh color
@@ -158,6 +159,15 @@ def parse_options() -> None:
                         default=default_background,
                         required=False,
                         help=f"select background color. Default: {default_background}\n\n")
+    
+    parser.add_argument('--clim', 
+                        type=float, 
+                        nargs=2,
+                        metavar=('VMIN', 'VMAX'),
+                        default=mesh_args['clim'], 
+                        required=False,
+                        help="colormap range, with minimum and maximum values.\n"
+                             "Default: adaptive selection, based on the plotted quantity.\n\n")
 
     parser.add_argument('--cmap',
                         type=str,
@@ -167,23 +177,13 @@ def parse_options() -> None:
                              "If not specified, colormaps will be automatically selected.\n"
                              "Refer to matplotlib website to choose the colormap properly.\n\n")
 
-    parser.add_argument( '--cmap-min', 
-                        type=float, 
-                        default=None, 
-                        help='Minimum colormap value (default: automatic)')
-    
-    parser.add_argument( '--cmap-max', 
-                        type=float, 
-                        default=None, 
-                        help='Maximum colormap value (default: automatic)')
-
     parser.add_argument('-f', '--format',
                         type=str,
                         choices=SUPPORTED_EXTENSIONS,
                         default=extension,
                         required=False,
                         help=f"select file format. Default: {extension}\n\n")
-    
+
     default_incomp = bool2yesno(is_incomp)
 
     parser.add_argument('-i', '--incomp',
@@ -282,6 +282,7 @@ def parse_options() -> None:
         default_colormap = args.cmap
         colormaps = {}
 
+    mesh_args['clim'] = args.clim
     mesh_args['n_colors'] = args.n_colors
     mesh_args['show_edges'] = yesno2bool(args.show_edges)
 
