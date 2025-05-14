@@ -154,7 +154,7 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     Try to infer slice normal direction and adjust camera position. \\
     If normal direction is not computed correctly \\
     (or it is not aligned with x, y or z direction), \\
-    then just reset camera position and set user-defined zoom and focal point.
+    then just reset camera position and set user-defined focal point and zoom.
     '''
     mesh = plotter.mesh
 
@@ -166,11 +166,12 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     # return if normal is not found correctly
     if len(normal_idx) != 1:
         plotter.reset_camera()
-        plotter.zoom_camera(opt.camera_options['zoom'])
 
         if opt.camera_options['focal_point'] != None:
             plotter.set_focus(opt.camera_options['focal_point'])
 
+        plotter.zoom_camera("tight")
+        plotter.zoom_camera(opt.camera_options['zoom'])
         return
 
     # generate normal vector
@@ -207,7 +208,7 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     # compute and set camera parallel scale
     plotter.enable_parallel_projection()
     parallel_scale = max(height / 2, width / (2 * aspect_ratio))
-    parallel_scale *= opt.camera_options['zoom']
+    parallel_scale /= opt.camera_options['zoom']
     plotter.parallel_scale = parallel_scale
 
 

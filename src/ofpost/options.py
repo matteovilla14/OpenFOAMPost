@@ -103,7 +103,7 @@ class opt:
         'normal': +1,
         'view_up': +1,
         'focal_point': None,
-        'zoom': 1.1
+        'zoom': 0.95
     }
 
 
@@ -135,7 +135,7 @@ class opt:
                 except ValueError:
                     raise argparse.ArgumentTypeError(f"{input_value} is not a valid entry!")
 
-                if output_value < 0:
+                if output_value <= 0:
                     raise argparse.ArgumentTypeError(f"{input_value} is not positive!")
 
                 return output_value
@@ -156,7 +156,7 @@ class opt:
                             type=Path,
                             nargs='+',
                             metavar='PATHS',
-                            help='Paths where post-processing files will be looked for recursively')
+                            help='Paths where post-processing files will be searched recursively')
 
         # user custom options
         default_2D = bool2yesno(opt.is_2D)
@@ -188,11 +188,13 @@ class opt:
                             help="Colormap range, with minimum and maximum values.\n"
                                  "Default: adaptive selection, based on the plotted quantity.\n\n")
 
+        default_cmap = None
+
         parser.add_argument('--cmap',
                             type=str,
-                            default=None,
+                            default=default_cmap,
                             required=False,
-                            help=f"Select colormap.\n"
+                            help="Select colormap.\n"
                                  "If not specified, colormaps will be automatically selected.\n"
                                  "Refer to matplotlib website to choose the colormap properly.\n\n")
 
@@ -284,7 +286,9 @@ class opt:
                             type=positive_float,
                             default=default_zoom,
                             required=False,
-                            help=f"Set camera zoom. Default: {default_zoom}\n\n")
+                            help="Set camera zoom. It must be a positive float.\n"
+                                 "A value greater than 1 is a zoom-in, a value less than 1 is a zoom-out.\n"
+                                 f"Default: {default_zoom}\n\n")
 
         # parse arguments
         args = parser.parse_args()
