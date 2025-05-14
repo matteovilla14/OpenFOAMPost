@@ -156,10 +156,8 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     (or it is not aligned with x, y or z direction), \\
     then just reset camera position and set user-defined focal point and zoom.
     '''
-    mesh = plotter.mesh
-
     # try to infer slice normal direction (slice has zero thickness in normal direction)
-    bounds = np.array(mesh.bounds)
+    bounds = np.array(plotter.mesh.bounds)
     delta_bounds = np.abs(bounds[1::2] - bounds[0:-1:2])
     normal_idx, = np.where(delta_bounds / np.linalg.norm(delta_bounds) < 1e-14) # get zero-thickness direction
 
@@ -182,7 +180,7 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     if opt.camera_options['focal_point'] != None:
         focal_point = opt.camera_options['focal_point']
     else:
-        focal_point = mesh.center
+        focal_point = plotter.mesh.center
 
     position = focal_point + normal
 

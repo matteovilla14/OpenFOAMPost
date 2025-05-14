@@ -135,7 +135,7 @@ class opt:
                 except ValueError:
                     raise argparse.ArgumentTypeError(f"{input_value} is not a valid entry!")
 
-                if output_value <= 0:
+                if output_value <= 0: # check if output value is positive
                     raise argparse.ArgumentTypeError(f"{input_value} is not positive!")
 
                 return output_value
