@@ -9,7 +9,7 @@ import pyvista as pv
 import matplotlib.pyplot as plt
 from io import StringIO
 from pathlib import Path
-from typing import Any, Callable, Generator 
+from typing import Any, Callable, Generator
 
 
 # ------------------ IMPORT OPTIONS ------------------

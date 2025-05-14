@@ -4,6 +4,7 @@ LOAD CONSTANTS AND OPTIONS.
 import sys
 import argparse
 from pathlib import Path
+from typing import Callable
 from matplotlib import colormaps as mat_colormaps
 from matplotlib.colors import is_color_like, CSS4_COLORS
 
@@ -127,6 +128,23 @@ class opt:
         def yesno2bool(str_var: str) -> bool:
             return (str_var == 'yes')
         
+        def positive(required_type: Callable) -> Callable:
+            def wrapper(input_value: str)-> required_type: # type: ignore
+                try:
+                    output_value = required_type(input_value) # convert to the required type
+                except ValueError:
+                    raise argparse.ArgumentTypeError(f"{input_value} is not a valid entry!")
+
+                if output_value < 0:
+                    raise argparse.ArgumentTypeError(f"{input_value} is not positive!")
+
+                return output_value
+
+            return wrapper
+
+        positive_int = positive(int)
+        positive_float = positive(float)
+
         # argument parser
         parser = argparse.ArgumentParser(prog='ofpost',
                                          description='A powerful tool to to post-process OpenFOAM simulations.',
@@ -226,7 +244,7 @@ class opt:
         default_n_colors = opt.mesh_args['n_colors']
 
         parser.add_argument('-n', '--n-colors',
-                            type=int,
+                            type=positive_int,
                             metavar='N',
                             default=default_n_colors,
                             required=False,
@@ -253,7 +271,7 @@ class opt:
         default_window_size = opt.plotter_options['window_size']
 
         parser.add_argument('-w', '--window-size',
-                            type=int,
+                            type=positive_int,
                             nargs=2,
                             metavar=('WIDTH', 'HEIGHT'),
                             default=default_window_size,
@@ -263,7 +281,7 @@ class opt:
         default_zoom = opt.camera_options['zoom']
 
         parser.add_argument('-z', '--zoom',
-                            type=float,
+                            type=positive_float,
                             default=default_zoom,
                             required=False,
                             help=f"Set camera zoom. Default: {default_zoom}\n\n")
