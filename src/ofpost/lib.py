@@ -157,7 +157,7 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     then just reset camera position and set user-defined focal point and zoom.
     '''
     # try to infer slice normal direction (slice has zero thickness in normal direction)
-    bounds = np.array(plotter.mesh.bounds)
+    bounds = np.ma.array(plotter.mesh.bounds, mask=False) # use masked array
     delta_bounds = np.abs(bounds[1::2] - bounds[0:-1:2])
     normal_idx, = np.where(delta_bounds / np.linalg.norm(delta_bounds) < 1e-14) # get zero-thickness direction
 
@@ -175,6 +175,7 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     # generate normal vector
     normal = np.zeros(3)
     normal[normal_idx] = opt.camera_options['normal']
+    delta_bounds.mask[normal_idx] = True # mask normal direction
 
     # set up focal point and camera position
     if opt.camera_options['focal_point'] != None:
@@ -185,8 +186,11 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     position = focal_point + normal
 
     # compute camera view-up orientation
-    delta_bounds[normal_idx] = np.inf # needed to avoid the normal direction as view-up direction
-    view_up_idx = np.argmin(delta_bounds)
+    if not opt.camera_options['rotate']:
+        view_up_idx = np.argmin(delta_bounds)
+    else:
+        view_up_idx = np.argmax(delta_bounds)
+    
     view_up = np.zeros(3)
     view_up[view_up_idx] = opt.camera_options['view_up']
 
@@ -198,8 +202,8 @@ def adjust_camera(plotter: pv.Plotter) -> None:
 
     # get mesh heigh and width and compute window aspect ratio
     height = delta_bounds[view_up_idx]
-    delta_bounds[view_up_idx] = np.inf
-    width = np.min(delta_bounds)
+    delta_bounds.mask[view_up_idx] = True # mask view-up direction
+    width = delta_bounds.compressed()[0] # extract non-masked entry
     window_size = opt.plotter_options['window_size']
     aspect_ratio = window_size[0] / window_size[1]
 

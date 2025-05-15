@@ -103,6 +103,7 @@ class opt:
         'normal': +1,
         'view_up': +1,
         'focal_point': None,
+        'rotate': False,
         'zoom': 0.95
     }
 
@@ -252,6 +253,15 @@ class opt:
                             required=False,
                             help=f"Set number of colors used to display scalars. Default: {default_n_colors}\n\n")
         
+        default_rotate = bool2yesno(opt.camera_options['rotate'])
+
+        parser.add_argument('-r', '--rotate',
+                            type=str,
+                            choices=yesno_choices,
+                            default=default_rotate,
+                            required=False,
+                            help=f"Rotate slice by 90 degrees. Default: {default_rotate}\n\n")
+        
         default_show_edges = bool2yesno(opt.mesh_args['show_edges'])
 
         parser.add_argument('--show-edges',
@@ -363,4 +373,13 @@ class opt:
             opt.camera_options['view_up'] = -1
 
         opt.camera_options['focal_point'] = args.focal_point
+        opt.camera_options['rotate'] = yesno2bool(args.rotate)
         opt.camera_options['zoom'] = args.zoom
+
+        # place scalar bar verically
+        if opt.camera_options['rotate']:
+            sba = opt.scalar_bar_args
+            sba['vertical'] = True
+            sba['width'], sba['height'] = sba['height'], sba['width']
+            sba['position_y'] = sba['position_x']
+            sba['position_x'] = 0.85
