@@ -20,6 +20,9 @@ Before starting, install all the dependencies (only procedure for *Ubuntu-based*
 sudo apt install python3-pip pipx
 ```
 
+**⚠️WARNING:** The package requires `python3.10` or later!
+
+
 ### Install package - Linux, MacOS, Windows
 You can install the wheel package through *pipx* (this is the suggested option) 🚀:
 ```
