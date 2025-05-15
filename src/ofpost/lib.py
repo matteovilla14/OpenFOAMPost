@@ -1,6 +1,7 @@
 '''
 LIBRARY FUNCTIONS.
 '''
+import os
 import re
 import traceback
 import numpy as np
@@ -29,16 +30,16 @@ def find_files(pattern: str, path: Path, exceptions: list[str]=[]) -> Generator[
     is_found = False
 
     # look for files that match 'pattern'
-    for root, _, files in path.walk(top_down=True):
+    for root, _, files in os.walk(path, topdown=True):
         for file in files:
             file = Path(file)
 
             # skip other files
-            if not file.match(pattern, case_sensitive=False):
+            if not file.match(pattern):
                 continue
 
             # skip exceptions
-            if any([file.match(exc, case_sensitive=False) for exc in exceptions]):
+            if any([file.match(exc) for exc in exceptions]):
                 continue
             
             # yield filepath
@@ -102,7 +103,7 @@ def get_output_filepath(filepath: Path, filesuffix: str='') -> tuple[Path, str, 
 
     # print output file path
     try:
-        print(f'Output file: {outfilepath.relative_to(opt.WORKING_PATH, walk_up=True)}')
+        print(f'Output file: {outfilepath.relative_to(opt.WORKING_PATH)}')
     except ValueError:
         print(f'Output file: {outfilepath}')
 

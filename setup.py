@@ -8,7 +8,7 @@ REQUIRES_PATH = 'requirements.txt'
 with open(REQUIRES_PATH, 'r') as file:
     INSTALL_REQUIRES = file.read().splitlines()
 
-PYTHON_REQUIRES = ">= 3.10, < 4" 
+PYTHON_REQUIRES = ">= 3.10, < 4"
 
 # get project version
 with open('VERSION.txt', 'r') as file:
