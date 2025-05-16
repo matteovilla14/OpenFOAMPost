@@ -5,7 +5,7 @@ Yeah, OpenFOAM *function objects* are awesome🌟, however processing .vtk manua
 
 For this purpose, **OpenFOAMPost** can extract *colorful images* 🌈 from your simulations!!
 
-**⚠️WARNING:** If you are just a user, it is sufficient that you take a look at [install](#how-to-install) and [usage](#how-to-use) sections (you can find also an [example](#examples) section below). \
+**⚠️NOTE:** If you are just a user, it is sufficient that you take a look at [install](#how-to-install) and [usage](#how-to-use) sections (you can find also an [example](#examples) section below). \
 For code contributions, refer to [contribute](#how-to-contribute) and [build](#how-to-build) sections! Enjoy! 🤗
 
 
@@ -17,16 +17,19 @@ Dependencies installation is specified for Linux only. MacOS and Windows users m
 ### Dependencies - Linux only (working also on WSL)
 Before starting, install all the dependencies (only procedure for *Ubuntu-based* systems is reported, find an equivalent for your specific Linux distro):
 ```
+sudo apt update
 sudo apt install python3-pip pipx
+pipx ensurepath
 ```
 
-**⚠️WARNING:** The package requires `python3.10` or later!
+**⚠️WARNING:** 
+- It is necessary to restart the shell session (i.e. the terminal) to apply the changes above!
+- The package requires `python3.10` or later!
 
 
 ### Install package - Linux, MacOS, Windows
 You can install the wheel package through *pipx* (this is the suggested option) 🚀:
 ```
-pipx ensurepath
 pipx install openfoampost
 ```
 or, alternatively, through *pip* (not supported starting from Ubuntu 24.04):
@@ -49,7 +52,9 @@ pip install --upgrade openfoampost
 ## How to use
 This script will essentially look for *.vtk*, *.dat*, *.xy* files into the specified directories and convert them into *.png* format (other formats can be selected by the user).
 
-⚠️**IMPORTANT**: this script will look into the specified directories and their *subdirectories* **recursively**!! Be sure you selected the correct directory before launching it!
+**⚠️IMPORTANT:** This script will look into the specified directories and their *subdirectories* **recursively**!! Be sure you selected the correct directory before launching it!
+
+**⚠️WARNING:** If you get a `command not found...` error, ensure you installed the [dependencies](#dependencies---linux-only-working-also-on-wsl) correctly!
 
 ### Basic usage 
 ```
@@ -68,7 +73,7 @@ ofpost . --2D yes --steady yes --incomp yes
 
 
 ## How to contribute
-All sorts of contributions are well-welcomed 🤗! You can start by cloning the git repo:
+All sorts of contributions are very welcome 🤗! You can start by cloning the git repo:
 ```
 git clone https://github.com/TheBusyDev/OpenFOAMPost.git
 ```
@@ -79,7 +84,7 @@ pip install -r requirements.txt
 source init.sh
 ```
 
-⚠️**NOTE**: `source init.sh` command is always required before starting to work on this project in order to initialize all the enviromnent variables properly!
+**⚠️NOTE:** `source init.sh` command is always required before starting to work on this project in order to initialize all the enviromnent variables properly!
 
 Hence, by calling :
 ```
