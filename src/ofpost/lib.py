@@ -125,6 +125,9 @@ def get_units(array_name: str) -> str:
     except KeyError:
         pass
 
+    # remove OpenFOAM suffix for mean fields
+    array_name = array_name.removesuffix('Mean')
+
     # do not attach units of measurement to dimensionless coefficients
     if array_name.endswith('_coeff'):
         return ''
