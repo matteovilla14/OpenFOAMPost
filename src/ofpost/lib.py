@@ -18,7 +18,9 @@ from ofpost.options import opt
 
 
 # ------------------ FUNCTIONS ------------------
-def find_files(pattern: str, path: Path, exceptions: list[str]=[]) -> Generator[Path, None, None]:
+def find_files(pattern: str,
+               path: Path,
+               exceptions: list[str]=[]) -> Generator[Path, None, None]:
     '''
     Look for files based on specified pattern recursively. \\
     In 'pattern', '*' matches any string. \\
@@ -67,7 +69,8 @@ def read_file_decorator(read_file: Callable) -> Callable:
     return wrapper
 
 
-def get_output_filepath(filepath: Path, filesuffix: str='') -> tuple[Path, str, str, str]:
+def get_output_filepath(filepath: Path,
+                        filesuffix: str='') -> tuple[Path, str, str, str]:
     '''
     Return output filepath (with extension), input filename, timestep and output directory name. \\
     If 'filesuffix' is provided, then files will be generated with the specificed suffix.
@@ -346,7 +349,11 @@ def read_labels(filepath: Path) -> list[str]:
     return labels
 
 
-def plot_data(df: pd.DataFrame, filepath: Path, semilogy: bool=False, append_units: bool=True, filesuffix: str='') -> None:
+def plot_data(df: pd.DataFrame,
+              filepath: Path,
+              semilogy: bool=False,
+              append_units: bool=True,
+              filesuffix: str='') -> None:
     '''
     Plot data from .dat files and save figure. \\
     Receive pandas DataFrame and source filepath as input.
@@ -395,7 +402,9 @@ def plot_data(df: pd.DataFrame, filepath: Path, semilogy: bool=False, append_uni
 
 
 @read_file_decorator
-def read_dat(filepath: Path, semilogy: bool=False, append_units: bool=True) -> None:
+def read_dat(filepath: Path,
+             semilogy: bool=False,
+             append_units: bool=True) -> None:
     '''
     Read data from .dat files \\
     (for 'forces.dat' files, refer to 'read_forces' function).
