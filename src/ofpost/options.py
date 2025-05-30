@@ -100,8 +100,8 @@ class opt:
     }
 
     camera_options = {
-        'normal': +1,
-        'view_up': +1,
+        'normal': +1,  # either +1 or -1
+        'view_up': +1, # either +1 or -1
         'focal_point': None,
         'rotate': False,
         'zoom': 0.95
@@ -362,14 +362,10 @@ class opt:
         opt.plotter_options['background_color'] = args.background
         opt.plotter_options['window_size'] = args.window_size
 
-        if not yesno2bool(args.flip_normal):
-            opt.camera_options['normal'] = +1
-        else:
+        if yesno2bool(args.flip_normal):
             opt.camera_options['normal'] = -1
 
-        if not yesno2bool(args.flip_view_up):
-            opt.camera_options['view_up'] = +1
-        else:
+        if yesno2bool(args.flip_view_up):
             opt.camera_options['view_up'] = -1
 
         opt.camera_options['focal_point'] = args.focal_point
