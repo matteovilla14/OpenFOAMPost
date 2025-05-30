@@ -159,18 +159,13 @@ def get_units(array_name: str) -> str:
 
 def adjust_camera(plotter: pv.Plotter) -> None:
     '''
-    Try to infer slice normal direction and adjust camera position. \\
-    If normal direction is not computed correctly \\
-    (or it is not aligned with x, y or z direction), \\
+    Try to infer slice normal direction through Principal Component Analysis (PCA) \\
+    and adjust camera position accordingly. \\
+    If normal direction is not computed correctly, \\
     then just reset camera position and set user-defined focal point and zoom.
     '''
-    # try to infer slice normal direction (slice has zero thickness in normal direction)
-    bounds = np.ma.array(plotter.mesh.bounds, mask=False) # use masked array
-    delta_bounds = np.abs(bounds[1::2] - bounds[0:-1:2])
-    normal_idx, = np.where(delta_bounds / np.linalg.norm(delta_bounds) < 1e-14) # get zero-thickness direction
-
-    # return if normal is not found correctly
-    if len(normal_idx) != 1:
+    # fallback function is normal direction is not computed correctly
+    def fallback_camera():
         plotter.reset_camera()
 
         if opt.camera_options['focal_point'] != None:
@@ -178,29 +173,47 @@ def adjust_camera(plotter: pv.Plotter) -> None:
 
         plotter.zoom_camera("tight")
         plotter.zoom_camera(opt.camera_options['zoom'])
+
+    # handle degenerate case (too few points)
+    if plotter.mesh.points.shape[0] < 3:
+        fallback_camera()
         return
 
-    # generate normal vector
-    normal = np.zeros(3)
-    normal[normal_idx] = opt.camera_options['normal']
-    delta_bounds.mask[normal_idx] = True # mask normal direction
+    # compute mesh centroid and get covariance matrix (of size 3x3)
+    centroid = plotter.mesh.points.mean(axis=0)
+    centered_points = plotter.mesh.points - centroid
+    cov_mat = np.cov(centered_points, rowvar=False)
 
-    # set up focal point and camera position
-    if opt.camera_options['focal_point'] != None:
-        focal_point = opt.camera_options['focal_point']
-    else:
-        focal_point = plotter.mesh.center
+    # eigen decomposition of covariance matrix
+    try:
+        eigvals, eigvecs = np.linalg.eigh(cov_mat)
+    except np.linalg.LinAlgError:
+        fallback_camera()
+        return
 
+    # select normal direction as the first eigenvector,
+    # corresponding to the lowest eigenvalue
+    normal = eigvecs[:, 0]
+    normal *= opt.camera_options['normal'] # flip normal if necessary
+
+    # select focal point
+    focal_point = opt.camera_options['focal_point'] \
+                  if opt.camera_options['focal_point'] != None \
+                  else plotter.mesh.center
+
+    # select view-up direction as the second eigenvector by default
+    view_up = eigvecs[:, 1]
+    # select horizontal direction as the third eigenvector by default,
+    # corresponding to the highest eigenvalue
+    hor_dir = eigvecs[:, 2]
+
+    if opt.camera_options['rotate']:
+        view_up, hor_dir = hor_dir, view_up
+
+    view_up *= opt.camera_options['view_up'] # flip view-up if necessary
+
+    # set camera position
     position = focal_point + normal
-
-    # compute camera view-up orientation
-    if not opt.camera_options['rotate']:
-        view_up_idx = np.argmin(delta_bounds)
-    else:
-        view_up_idx = np.argmax(delta_bounds)
-    
-    view_up = np.zeros(3)
-    view_up[view_up_idx] = opt.camera_options['view_up']
 
     plotter.camera_position = [
         position,
@@ -209,17 +222,21 @@ def adjust_camera(plotter: pv.Plotter) -> None:
     ]
 
     # get mesh heigh and width and compute window aspect ratio
-    height = delta_bounds[view_up_idx]
-    delta_bounds.mask[view_up_idx] = True # mask view-up direction
-    width = delta_bounds.compressed()[0] # extract non-masked entry
+    width = np.ptp(centered_points @ hor_dir)
+    height = np.ptp(centered_points @ view_up)
     window_size = opt.plotter_options['window_size']
     aspect_ratio = window_size[0] / window_size[1]
 
-    # compute and set camera parallel scale
-    plotter.enable_parallel_projection()
-    parallel_scale = max(height / 2, width / (2 * aspect_ratio))
-    parallel_scale /= opt.camera_options['zoom']
-    plotter.parallel_scale = parallel_scale
+    # check if mesh is effectively a 2D slice
+    if eigvals[0] / eigvals[2] < 1e-12:
+        # compute and set camera parallel scale
+        plotter.enable_parallel_projection()
+        parallel_scale = max(height / 2, width / (2 * aspect_ratio))
+        parallel_scale /= opt.camera_options['zoom']
+        plotter.parallel_scale = parallel_scale
+    else:
+        plotter.zoom_camera("tight")
+        plotter.zoom_camera(opt.camera_options['zoom'])
 
 
 @read_file_decorator
