@@ -186,24 +186,25 @@ def adjust_camera(plotter: pv.Plotter, tolerance: float=1e-10) -> None:
         fallback_camera()
         return
 
-    # compute mesh centroid and get covariance matrix (of size 3x3)
-    cov_mat = np.cov(plotter.mesh.points, rowvar=False)
+    # compute correlation matrix (of size 3x3)
+    centered_points = plotter.mesh.points - plotter.mesh.center
+    C = centered_points.T @ centered_points
 
-    # eigen decomposition of covariance matrix
+    # compute singular values and right singular vectors of centered_points
     try:
-        eigvals, eigvecs = np.linalg.eigh(cov_mat)
+        svals, rvecs = np.linalg.eigh(C)
     except np.linalg.LinAlgError:
         fallback_camera()
         return
 
     # check if mesh is actually a 2D slice
-    if eigvals[0] / eigvals[2] > tolerance:
+    if svals[0] / svals[2] > tolerance:
         fallback_camera()
         return
 
     # select normal direction as the first eigenvector,
     # corresponding to the lowest eigenvalue
-    normal = eigvecs[:, 0]
+    normal = rvecs[:, 0]
     flip_direction(normal, opt.camera_options['normal'])
 
     # select focal point
@@ -226,8 +227,8 @@ def adjust_camera(plotter: pv.Plotter, tolerance: float=1e-10) -> None:
     hor_dir /= np.linalg.norm(hor_dir)
 
     # compute width and height
-    width = np.ptp(plotter.mesh.points @ hor_dir)
-    height = np.ptp(plotter.mesh.points @ view_up)
+    width = np.ptp(centered_points @ hor_dir)
+    height = np.ptp(centered_points @ view_up)
 
     # rotate if necessary
     if (height > width) ^ opt.camera_options['rotate']:
