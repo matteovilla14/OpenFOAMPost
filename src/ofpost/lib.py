@@ -118,19 +118,19 @@ def get_units(array_name: str) -> str:
     Get units of measurement based on input array. \\
     Return empty string if array is not found.
     '''
-    # detect units of measurement
-    try:
-        units = ' [' + opt.units_of_measure[array_name] + ']'
-        return units
-    except KeyError:
-        pass
-
     # remove OpenFOAM suffix for mean fields
     array_name = array_name.removesuffix('Mean')
 
     # do not attach units of measurement to dimensionless coefficients
     if array_name.endswith('_coeff'):
         return ''
+
+    # detect units of measurement
+    try:
+        units = ' [' + opt.units_of_measure[array_name] + ']'
+        return units
+    except KeyError:
+        pass
 
     # try to extract array_name between brackets
     match = re.search(r'\((.*?)\)', array_name)
