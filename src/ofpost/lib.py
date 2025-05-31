@@ -160,7 +160,7 @@ def get_units(array_name: str) -> str:
     return units
 
 
-def adjust_camera(plotter: pv.Plotter, tolerance: float=1e-10) -> None:
+def adjust_camera(plotter: pv.Plotter, tolerance: float=1e-6) -> None:
     '''
     Try to infer slice normal direction through Principal Component Analysis (PCA) \\
     and adjust camera position accordingly. \\
@@ -213,19 +213,19 @@ def adjust_camera(plotter: pv.Plotter, tolerance: float=1e-10) -> None:
                   else plotter.mesh.center
 
     # select view-up direction
-    view_up_ref = np.zeros(3) # reference view-up direction
+    view_up_ref = np.array((1, 0, 0)) # reference view-up direction
 
-    for i in range(3):
-        view_up_ref[i-1] = 0
-        view_up_ref[i]   = 1
-        view_up = view_up_ref - (view_up_ref @ normal) * normal
-        view_up_norm = np.linalg.norm(view_up)
-        # break if normal is not aligned with view_up_ref
-        if view_up_norm > tolerance:
-            break
+    view_up = view_up_ref - (view_up_ref @ normal) * normal
+    view_up_norm = np.linalg.norm(view_up)
 
-    view_up /= view_up_norm
-    hor_dir = np.cross(view_up, normal) # horizontal direction
+    # handle case when normal is aligned with view_up_ref
+    if view_up_norm < tolerance:
+        view_up = np.array((0, 1, 0))
+    else:
+        view_up /= view_up_norm
+
+    # select horizontal direction
+    hor_dir = np.cross(view_up, normal)
     hor_dir /= np.linalg.norm(hor_dir)
 
     # compute width and height
