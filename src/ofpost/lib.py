@@ -202,8 +202,8 @@ def adjust_camera(plotter: pv.Plotter, tolerance: float=1e-10) -> None:
         fallback_camera()
         return
 
-    # select normal direction as the first eigenvector,
-    # corresponding to the lowest eigenvalue
+    # select normal direction as the first right singular vector,
+    # corresponding to the lowest singular value
     normal = rvecs[:, 0]
     flip_direction(normal, opt.camera_options['normal'])
 
